@@ -4,10 +4,9 @@ Turn a greyscale **depth map** into a 3D relief on a solid board and preview it 
 
 Everything runs client-side in a single HTML file. No build step, no server, no dependencies to install — Three.js is inlined, so it works fully offline.
 
-**Live demo:** `https://<your-username>.github.io/<your-repo>/`
+**Live demo:** `https://<your-username>.github.io/<your-repo>/](https://snazzygaz.github.io/relief/)`
 
-<!-- Optional: drop a screenshot in the repo and uncomment -->
-<!-- ![screenshot](screenshot.png) -->
+
 
 ---
 

@@ -68,26 +68,6 @@ Everything runs client-side in a single HTML file. No build step, no server, not
 - **Invert depth** if your map uses the opposite convention (dark = high).
 
 ---
-
-## ✦ Hosting on GitHub Pages
-
-The repo just needs `index.html` at the root.
-
-1. Create a repository and add `index.html` (provided).
-2. Push to GitHub:
-   ```bash
-   git init
-   git add index.html README.md LICENSE
-   git commit -m "Relief: depth map to 3D relief"
-   git branch -M main
-   git remote add origin https://github.com/snazzygaz/relief.git
-   git push -u origin main
-   ```
-3. On GitHub: **Settings → Pages → Build and deployment**. Set **Source** to *Deploy from a branch*, branch `main`, folder `/ (root)`, and Save.
-4. Wait a minute, then visit **https://snazzygaz.github.io/relief/**.
-
-There's nothing to build.
-
 ---
 
 ## ✦ Notes and limitations

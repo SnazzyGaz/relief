@@ -263,14 +263,13 @@
       <div class="grp">
         <h3>Material</h3>
         <div class="seg" id="segMat" style="margin-bottom:13px">
-          <button data-m="wood" class="active">Wood</button>
-          <button data-m="stone">Stone</button>
-          <button data-m="steel">Steel</button>
+          <button data-m="wood">Wood</button>
+          <button data-m="steel" class="active">Steel</button>
           <button data-m="plain">Plain</button>
         </div>
         <div class="ctl" id="ctlTone"><div class="lab"><label>Tone</label><span class="val" id="vTone"></span></div>
           <input type="range" id="tone" min="0" max="100" step="1" value="42"></div>
-        <div class="ctl" id="ctlGrain"><div class="lab"><label id="grainLab">Grain</label><span class="val" id="vGrain"></span></div>
+        <div class="ctl" id="ctlGrain"><div class="lab"><label id="grainLab">Brushing</label><span class="val" id="vGrain"></span></div>
           <input type="range" id="grain" min="0" max="100" step="1" value="55"></div>
         <div class="ctl" id="ctlColor" style="display:none">
           <div class="lab"><label>Colour</label><span class="val" id="vColor">#B8B2A6</span></div>
@@ -328,7 +327,7 @@ const S = {
   params: {
     height:12, blur:0.5, res:256, invert:false,
     size:160, thick:10,
-    material:'wood', tone:42, grain:55, finish:0, plainColor:'#b8b2a6',
+    material:'steel', tone:42, grain:55, finish:0, plainColor:'#b8b2a6',
     lnx:0.70, lny:0.62, bright:2.0,
     spin:false,
   },
@@ -509,7 +508,6 @@ function applyShading(){
   const m=S.params.material, sheen=S.params.finish; // sheen 0 matte .. 1 gloss
   let rough=0.7, metal=0.0, env=0.3;
   if(m==='wood'){  rough=0.72-sheen*0.5;  metal=0.0; env=0.35; }
-  if(m==='stone'){ rough=0.96-sheen*0.45; metal=0.0; env=0.4; }
   if(m==='steel'){ rough=0.55-sheen*0.45; metal=0.92; env=1.0; }
   if(m==='plain'){ rough=0.95-sheen*0.78; metal=0.0; env=0.25; }
   material.roughness=Math.max(0.04,rough);
@@ -564,19 +562,6 @@ function makeMaterial(){
       c=lerp3(mul3(base,0.62),mul3(base,1.12),t);
       bumpV=128+(t-0.5)*150-streak*120;
     }
-    else if(m==='stone'){
-      const mottle=fbm(u*7,v*7);
-      const veins=Math.abs(fbm(u*3.2,v*3.2)-0.5);
-      const speck=hash(Math.floor(u*N*1.4),Math.floor(v*N*1.4));
-      let t=mottle*0.7+veins*0.3;
-      const fleck=(speck>0.86?(-0.35):(speck<0.1?0.2:0))*(0.4+gr);
-      t=Math.max(0,Math.min(1,t+fleck));
-      const light=[206,204,197],darkC=[74,76,80];
-      const base=lerp3(light,darkC,tone);
-      c=lerp3(mul3(base,0.82),mul3(base,1.12),t);
-      bumpV=128+(t-0.5)*90+ (speck>0.86?-40:0);
-      roughV=200-t*40; // matte, slight variation
-    }
     else { // steel — brushed horizontal
       const streak=fbm(u*420,v*3);
       const dust=hash(Math.floor(u*N),Math.floor(v*N*0.15))*0.5;
@@ -599,8 +584,8 @@ function makeMaterial(){
 
   material.map=canvasTex(col,true);
   material.bumpMap=canvasTex(bmp,false);
-  material.bumpScale = m==='steel'?0.12 : m==='stone'?0.45 : 0.35;
-  if(m==='steel'||m==='stone') material.roughnessMap=canvasTex(rgh,false);
+  material.bumpScale = m==='steel'?0.12 : 0.35;
+  if(m==='steel') material.roughnessMap=canvasTex(rgh,false);
   applyShading();
 }
 
@@ -814,7 +799,7 @@ document.querySelectorAll('#segFinish button').forEach(b=>{
   });
 });
 
-const grainLabels={wood:'Grain',stone:'Speckle',steel:'Brushing',plain:'Texture'};
+const grainLabels={wood:'Grain',steel:'Brushing',plain:'Texture'};
 document.querySelectorAll('#segMat button').forEach(b=>{
   b.addEventListener('click',()=>{
     document.querySelectorAll('#segMat button').forEach(x=>x.classList.remove('active'));

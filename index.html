@@ -382,7 +382,7 @@ const material = new T.MeshStandardMaterial({roughness:0.62, metalness:0.0});
  * ============================================================ */
 const cam = {
   target:new T.Vector3(0,0,0),
-  radius:300, theta:Math.PI*0.25, phi:Math.PI*0.34,
+  radius:300, theta:0, phi:0.08,
   minR:40, maxR:1400,
 };
 function applyCam(){
@@ -460,8 +460,8 @@ function frameCamera(){
   const w=S.boardW||160, d=S.boardD||160;
   const span=Math.max(w,d,p.thick+p.height);
   cam.target.set(0,(p.thick+p.height)*0.35,0);
-  cam.radius = span*1.7;
-  cam.theta = Math.PI*0.25; cam.phi = Math.PI*0.36;
+  cam.radius = span*1.6;
+  cam.theta = 0; cam.phi = 0.08;   // straight-on to the plane, from above
   applyCam();
 }
 
@@ -876,6 +876,7 @@ function loadFile(file){
   img.src=URL.createObjectURL(file);
 }
 function setSource(imgOrCanvas,w,h){
+  const first = !S.source;            // preserve camera arrangement on subsequent swaps
   const cvs=document.createElement('canvas'); cvs.width=w; cvs.height=h;
   cvs.getContext('2d').drawImage(imgOrCanvas,0,0,w,h);
   S.source={canvas:cvs,w,h};
@@ -884,7 +885,7 @@ function setSource(imgOrCanvas,w,h){
   $('mDim').textContent=`${w}×${h}`;
   S.needTopo=true;
   drawThumb();
-  setTimeout(frameCamera,0);
+  if(first) setTimeout(frameCamera,0);
 }
 
 /* sample generator */

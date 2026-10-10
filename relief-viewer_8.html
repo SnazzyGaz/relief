@@ -1,0 +1,1766 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Relief Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<style>
+:root{
+  --bg:#12100e; --side:#1a1714; --card:#211d19; --card2:#28231e; --line:#352e27; --line2:#463d33;
+  --ink:#efe8dd; --ink2:#cfc5b7; --mute:#958a7c; --faint:#6c6357;
+  --acc:#e0a052; --acc2:#f3bd78; --accbg:rgba(224,160,82,.12);
+  --ok:#8cc58a; --err:#ec8a72; --r:10px;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.45 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.app{display:grid;grid-template-columns:340px 1fr;height:100vh}
+.side{background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.brand{display:flex;align-items:center;gap:10px;padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+.brand h1{font-size:15px;font-weight:700;margin:0}
+.brand p{margin:0;color:var(--mute);font-size:11.5px}
+.panes{flex:1;overflow-y:auto;padding:12px 12px 28px;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+details.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:0 13px}
+details.card summary{cursor:pointer;padding:11px 0;font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--mute);list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.card summary::-webkit-details-marker{display:none}
+details.card summary::after{content:"+";font-size:15px;line-height:1;color:var(--acc)}
+details.card[open] summary::after{content:"–"}
+details.card[open]{padding-bottom:13px}
+.row{display:flex;gap:6px;align-items:center;margin:8px 0 0;flex-wrap:wrap}
+.grow{flex:1}
+button{appearance:none;border:1px solid var(--line2);background:var(--card2);color:var(--ink);padding:7px 11px;border-radius:7px;cursor:pointer;font:inherit;font-weight:500;line-height:1.2}
+button:hover:not(:disabled){border-color:var(--acc)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+button.primary{background:var(--acc);border-color:var(--acc);color:#1d150c;font-weight:600}
+button.primary:hover:not(:disabled){background:var(--acc2);border-color:var(--acc2)}
+button.big{width:100%;padding:10px;font-size:13.5px}
+button.mini{padding:4px 9px;font-size:11.5px;border-radius:6px}
+button:disabled{opacity:.4;cursor:not-allowed}
+select,input[type=number]{background:var(--card2);color:var(--ink);border:1px solid var(--line2);border-radius:7px;padding:6px 8px;font:inherit;min-width:0}
+input[type=color]{width:34px;height:28px;padding:0 2px;border:1px solid var(--line2);border-radius:6px;background:var(--card2);cursor:pointer}
+input[type=file]{display:none}
+.kv{display:grid;grid-template-columns:1fr minmax(0,1.1fr);gap:7px 10px;align-items:center;margin-top:4px}
+.kv>span{color:var(--ink2)}
+.kv input[type=number],.kv select{width:100%}
+.status{font-size:12px;color:var(--mute);min-height:1.3em;word-break:break-word;margin-top:7px}
+.status:empty{display:none}
+.status.err{color:var(--err)} .status.ok{color:var(--ok)}
+.help{color:var(--mute);font-size:11.5px;line-height:1.4;margin:6px 0 0}
+.chk{display:flex;gap:8px;align-items:center;margin:9px 0 0;color:var(--ink2);cursor:pointer}
+.chk input{accent-color:var(--acc);width:15px;height:15px}
+label.f{display:grid;grid-template-columns:1fr auto;gap:2px 8px;margin:9px 0 0;align-items:center}
+label.f>span:first-child{color:var(--ink2)}
+label.f span.v{font:500 11.5px var(--mono);color:var(--mute);min-width:38px;text-align:right}
+input[type=range]{grid-column:1/3;width:100%;height:18px;margin:0;background:transparent;appearance:none;-webkit-appearance:none;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:var(--line2)}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--line2)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--ink);border:3px solid var(--acc);margin-top:-5.5px;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:var(--ink);border:3px solid var(--acc)}
+.grp{font-size:11px;font-weight:600;color:var(--acc);margin:14px 0 -2px;letter-spacing:.06em;text-transform:uppercase}
+.drop{border:1.5px dashed var(--line2);border-radius:9px;padding:16px 10px;text-align:center;color:var(--mute);cursor:pointer}
+.drop:hover,.drop.hover{border-color:var(--acc);background:var(--accbg);color:var(--ink)}
+.drop b{color:var(--ink)}
+.pill{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--card2);border:1px solid var(--line2);color:var(--mute);white-space:nowrap;font-weight:500;text-transform:none;letter-spacing:0}
+main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.stage{flex:1;position:relative;min-height:0;background:radial-gradient(ellipse at center,#1c1915 0%,var(--bg) 70%)}
+#view3d{position:absolute;inset:0}
+#view3d canvas{display:block;width:100%!important;height:100%!important;cursor:grab}
+#view3d canvas:active{cursor:grabbing}
+.empty{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.empty>div{color:var(--mute);text-align:center;max-width:420px;line-height:1.6;pointer-events:auto}
+.empty h2{color:var(--ink);font-size:18px;font-weight:600;margin:14px 0 6px}
+.dragover::after{content:"Drop depth map";position:absolute;inset:12px;border:2px dashed var(--acc);border-radius:12px;display:grid;place-items:center;color:var(--acc2);font-size:18px;font-weight:600;background:rgba(18,16,14,.6);pointer-events:none}
+.bar{display:flex;gap:10px;align-items:center;padding:8px 14px;border-top:1px solid var(--line);background:var(--side);font-size:12px;color:var(--mute);flex-wrap:wrap;min-height:44px}
+#readout{margin-left:auto;font-family:var(--mono);font-size:11.5px}
+.abBadge{position:absolute;left:16px;top:14px;width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font:700 20px Inter,system-ui,sans-serif;background:var(--card);border:1px solid var(--line2);color:var(--ink);pointer-events:none}
+.abBadge.b{background:var(--acc);border-color:var(--acc);color:#1d150c}
+.busy{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--card);border:1px solid var(--line2);padding:6px 12px;border-radius:20px;font-size:12px;color:var(--ink2)}
+@media (max-width:760px){.app{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto;min-height:100vh}.side{max-height:none}.stage{min-height:60vh}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side">
+  <div class="brand">
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect x="1" y="1" width="24" height="24" rx="6" stroke="#e0a052" stroke-width="1.6"/><path d="M5 18c3-1 4-7 8-7s5 6 8 7" stroke="#f3bd78" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <div><h1>Relief Viewer</h1><p>Depth map → 3D panel → STL</p></div>
+  </div>
+  <div class="panes">
+
+    <details class="card" open><summary>Depth map <span class="pill" id="srcPill">none</span></summary>
+      <div class="drop" id="drop"><b>Open a depth map</b><br>PNG 8/16-bit, JPG, WebP · or drop anywhere</div>
+      <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/bmp,image/gif">
+      <label class="chk"><input type="checkbox" id="invert"> Invert (dark = high)</label>
+      <div class="kv" style="margin-top:10px">
+        <span>Mesh detail</span>
+        <select id="meshRes"><option value="512">Draft · 512</option><option value="1024" selected>Standard · 1024</option><option value="1536">High · 1536</option><option value="2048">Ultra · 2048</option></select>
+        <span>Surface detail</span>
+        <select id="nrmRes"><option value="0">Mesh only</option><option value="2048">2048 px</option><option value="4096" selected>4096 px</option><option value="8192">8192 px</option></select>
+      </div>
+      <p class="help">Mesh detail sets the shape and shadows. Surface detail shades every pixel of the map, so fine texture stays sharp up close (capped at the source and your GPU's limit).</p>
+      <div class="row"><button class="mini" id="btnSample">Load sample</button></div>
+      <div class="status" id="loadStatus"></div>
+      <div class="grp">Compare</div>
+      <div class="row"><button class="mini" id="btnB">Load B to compare…</button><button class="mini" id="btnClrB" hidden>Remove B</button><span class="pill" id="bPill" hidden></span></div>
+      <input type="file" id="fileB" accept="image/png,image/jpeg,image/webp,image/bmp,image/gif">
+      <p class="help">Loads a second depth map into the same spot. Flip between A and B with Space (or the A/B button) to spot differences. Same board, material, light and view. STL export uses A.</p>
+    </details>
+
+    <details class="card" open><summary>Board</summary>
+      <div class="kv">
+        <span>Relief width (mm)</span><input type="number" id="wmm" value="300" min="10" step="10">
+        <span>Relief height (mm)</span><input type="number" id="hmm" value="" disabled>
+        <span>Relief depth (mm)</span><input type="number" id="dmm" value="8" min="0.1" step="0.5">
+        <span>Base thickness (mm)</span><input type="number" id="bmm" value="3" min="0" step="0.5">
+        <span>Border (mm)</span><input type="number" id="border" value="0" min="0" step="5">
+      </div>
+      <label class="chk"><input type="checkbox" id="hideFloor"> Model only (hide board &amp; floor)</label>
+      <label class="f" id="floorRow" hidden><span>Floor cut-off</span><span class="v"></span><input type="range" id="floorCut" min="0" max="0.2" step="0.002" value="0.004"></label>
+      <p class="help" id="floorHelp" hidden>View only: removes the slab and every part of the map at or below the cut-off, so just the raised model shows. STL export is unchanged.</p>
+      <label class="f"><span>Depth</span><span class="v" id="dmmV"></span><input type="range" id="dmmR" min="0.5" max="40" step="0.1" value="8"></label>
+    </details>
+
+    <details class="card" open><summary>Material</summary>
+      <div class="kv">
+        <span>Preset</span>
+        <select id="matPreset"></select>
+        <span>Colour</span><div class="row" style="margin:0"><input type="color" id="mColor"><select id="mGrain" class="grow"><option value="0">No texture</option><option value="1">Fine wood grain</option><option value="2">Bold wood grain</option><option value="3">Stone speckle</option><option value="4">Leather pebble</option></select></div>
+      </div>
+      <label class="f"><span>Roughness</span><span class="v"></span><input type="range" id="mRough" min="0" max="1" step="0.01"></label>
+      <label class="f"><span>Metalness</span><span class="v"></span><input type="range" id="mMetal" min="0" max="1" step="0.01"></label>
+      <label class="f"><span>Satin coat</span><span class="v"></span><input type="range" id="mCoat" min="0" max="1" step="0.01"></label>
+      <label class="f"><span>Coat gloss</span><span class="v"></span><input type="range" id="mCoatGloss" min="0" max="1" step="0.01"></label>
+      <label class="f"><span>Sheen</span><span class="v"></span><input type="range" id="mSheen" min="0" max="1" step="0.01"></label>
+      <label class="f"><span>Sheen softness</span><span class="v"></span><input type="range" id="mSheenRough" min="0" max="1" step="0.01"></label>
+      <label class="f"><span>Reflections</span><span class="v"></span><input type="range" id="mEnv" min="0" max="2" step="0.01"></label>
+      <div class="grp">Finish</div>
+      <label class="f"><span>Patina / antique</span><span class="v"></span><input type="range" id="mPatina" min="0" max="1" step="0.01"><span class="help tip">Darkens recesses and polishes the high points, like an aged coin or a cast rubbed back with wax.</span></label>
+      <div class="kv" style="margin-top:6px"><span>Patina colour</span><input type="color" id="mPatCol" value="#2a2018"></div>
+      <label class="f"><span>Translucency</span><span class="v"></span><input type="range" id="mTrans" min="0" max="1" step="0.01"><span class="help tip">Light passes through (clear or tinted resin). Looks best on a lighter background. Heavier to render.</span></label>
+      <div class="kv" style="margin-top:6px"><span>Print layers</span><select id="mLayer"><option value="0">Off</option><option value="0.05">0.05 mm</option><option value="0.1">0.10 mm</option><option value="0.15">0.15 mm</option><option value="0.2">0.20 mm</option><option value="0.3">0.30 mm</option></select></div>
+      <label class="chk" title="Snaps every height down to a whole layer, as a slicer does, so the real staircase shows in the shape and shadows. View only; STL is unchanged."><input type="checkbox" id="mQuant"> Quantise geometry to layers</label>
+    </details>
+
+    <details class="card" open><summary>Lighting</summary>
+      <div class="kv"><span>Preset</span><select id="litPreset"></select></div>
+      <label class="f"><span>Direction</span><span class="v"></span><input type="range" id="lAz" min="0" max="360" step="1"></label>
+      <label class="f"><span>Height</span><span class="v"></span><input type="range" id="lEl" min="3" max="90" step="1"></label>
+      <label class="f"><span>Key strength</span><span class="v"></span><input type="range" id="lKey" min="0" max="8" step="0.05"></label>
+      <label class="f"><span>Warmth</span><span class="v"></span><input type="range" id="lWarm" min="-1" max="1" step="0.01"></label>
+      <label class="f"><span>Fill</span><span class="v"></span><input type="range" id="lFill" min="0" max="2" step="0.01"></label>
+      <label class="f"><span>Exposure</span><span class="v"></span><input type="range" id="lExp" min="0.2" max="2.5" step="0.01"></label>
+      <label class="chk"><input type="checkbox" id="lShadow" checked> Cast shadows</label>
+      <div class="kv" style="margin-top:9px"><span>Background</span><input type="color" id="bgCol" value="#12100e"></div>
+    </details>
+
+    <details class="card"><summary>STL export</summary>
+      <div class="kv">
+        <span>Grid spacing</span>
+        <select id="sRes"><option value="0">Native pixels</option><option value="0.1">0.10 mm</option><option value="0.15">0.15 mm</option><option value="0.2" selected>0.20 mm</option><option value="0.25">0.25 mm</option><option value="0.3">0.30 mm</option><option value="0.5">0.50 mm</option><option value="1">1.00 mm</option></select>
+      </div>
+      <label class="chk"><input type="checkbox" id="sBox"> Pour box (for silicone moulds)</label>
+      <div class="kv" id="boxOpts" hidden style="margin-top:8px">
+        <span>Clearance (mm)</span><input type="number" id="bClear" value="10" min="0">
+        <span>Wall (mm)</span><input type="number" id="bWall" value="3" min="0.8" step="0.2">
+        <span>Cover above (mm)</span><input type="number" id="bCover" value="6" min="0">
+        <span>Floor (mm)</span><input type="number" id="bFloor" value="2" min="0.4" step="0.2">
+      </div>
+      <label class="chk"><input type="checkbox" id="sTile"> Split into tiles for print bed</label>
+      <div class="kv" id="tileOpts" hidden style="margin-top:8px">
+        <span>Bed width (mm)</span><input type="number" id="bedW" value="256" min="20">
+        <span>Bed depth (mm)</span><input type="number" id="bedH" value="256" min="20">
+      </div>
+      <p class="help">Units are mm. Uses the board above: width, depth, base and border.</p>
+      <div class="status" id="stlEst"></div>
+      <div class="row"><button class="primary big" id="btnStl" disabled>Export STL</button></div>
+      <div class="status" id="stlStatus"></div>
+    </details>
+  </div>
+</aside>
+
+<main>
+  <div class="stage" id="stage">
+    <div id="view3d"></div>
+    <div class="empty" id="empty"><div>
+      <svg width="54" height="54" viewBox="0 0 26 26" fill="none"><rect x="1" y="1" width="24" height="24" rx="6" stroke="#463d33" stroke-width="1.2"/><path d="M5 18c3-1 4-7 8-7s5 6 8 7" stroke="#e0a052" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <h2>Drop a depth map to view it</h2>
+      White = high, black = low. 16-bit PNGs keep full precision.<br>
+      <div class="row" style="justify-content:center;margin-top:14px"><button class="primary" id="btnOpen2">Open depth map</button><button id="btnSample2">Load sample</button></div>
+    </div></div>
+    <div class="busy" id="busy" hidden></div>
+    <div class="abBadge" id="abBadge" hidden>A</div>
+  </div>
+  <div class="bar">
+    <button class="mini" id="vReset">Fit view</button>
+    <button class="mini" id="vFront">Front</button>
+    <button class="mini" id="vRake">Angled</button>
+    <label class="chk" style="margin:0 0 0 6px"><input type="checkbox" id="sway"> Sway</label>
+    <label class="chk" style="margin:0 0 0 6px" title="Shows the raw height map on the model (white = high). Shortcut: H"><input type="checkbox" id="showHM"> Height map</label>
+    <button class="mini" id="btnAB" hidden>Show B (Space)</button>
+    <button class="mini" id="vShot">Save image</button>
+    <span id="readout"></span>
+  </div>
+</main>
+</div>
+
+<script id="coreSrc">
+// ===== Relief core: pure math, no DOM =====
+const Core = (() => {
+  // ---------- box-blur x3 ≈ gaussian ----------
+  function boxSizes(sigma, n = 3) {
+    const wIdeal = Math.sqrt((12 * sigma * sigma / n) + 1);
+    let wl = Math.floor(wIdeal); if (wl % 2 === 0) wl--;
+    const wu = wl + 2;
+    const mIdeal = (12 * sigma * sigma - n * wl * wl - 4 * n * wl - 3 * n) / (-4 * wl - 4);
+    const m = Math.round(mIdeal);
+    const s = []; for (let i = 0; i < n; i++) s.push(i < m ? wl : wu);
+    return s;
+  }
+  function boxH(src, dst, w, h, r) {
+    const iarr = 1 / (r + r + 1);
+    for (let y = 0; y < h; y++) {
+      const o = y * w;
+      const fv = src[o], lv = src[o + w - 1];
+      let val = (r + 1) * fv;
+      for (let j = 0; j < r; j++) val += src[o + Math.min(j, w - 1)];
+      for (let x = 0; x < w; x++) {
+        val += src[o + Math.min(x + r, w - 1)] - (x - r - 1 >= 0 ? src[o + x - r - 1] : fv);
+        dst[o + x] = val * iarr;
+      }
+      void lv;
+    }
+  }
+  function boxV(src, dst, w, h, r) {
+    const iarr = 1 / (r + r + 1);
+    for (let x = 0; x < w; x++) {
+      const fv = src[x];
+      let val = (r + 1) * fv;
+      for (let j = 0; j < r; j++) val += src[Math.min(j, h - 1) * w + x];
+      for (let y = 0; y < h; y++) {
+        val += src[Math.min(y + r, h - 1) * w + x] - (y - r - 1 >= 0 ? src[(y - r - 1) * w + x] : fv);
+        dst[y * w + x] = val * iarr;
+      }
+    }
+  }
+  function blur(src, w, h, sigma) {
+    const out = new Float32Array(src);
+    if (!(sigma > 0.3)) return out;
+    const tmp = new Float32Array(src.length);
+    for (const b of boxSizes(sigma)) {
+      const r = (b - 1) >> 1;
+      if (r < 1) continue;
+      boxH(out, tmp, w, h, r); boxV(tmp, out, w, h, r);
+    }
+    return out;
+  }
+
+  // ---------- gradients (forward diff, Neumann: 0 at last col/row) ----------
+  function grad(f, w, h) {
+    const gx = new Float32Array(w * h), gy = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      gx[i] = x < w - 1 ? f[i + 1] - f[i] : 0;
+      gy[i] = y < h - 1 ? f[i + w] - f[i] : 0;
+    }
+    return [gx, gy];
+  }
+
+  // ---------- FFT radix-2 ----------
+  const twCache = new Map();
+  function tw(n) {
+    if (twCache.has(n)) return twCache.get(n);
+    const c = new Float64Array(n / 2), s = new Float64Array(n / 2);
+    for (let i = 0; i < n / 2; i++) { c[i] = Math.cos(-2 * Math.PI * i / n); s[i] = Math.sin(-2 * Math.PI * i / n); }
+    const rev = new Uint32Array(n); const bits = Math.log2(n);
+    for (let i = 0; i < n; i++) { let r = 0, v = i; for (let b = 0; b < bits; b++) { r = (r << 1) | (v & 1); v >>= 1; } rev[i] = r; }
+    const t = { c, s, rev }; twCache.set(n, t); return t;
+  }
+  function fft(re, im, inverse) {
+    const n = re.length, { c, s, rev } = tw(n);
+    for (let i = 0; i < n; i++) { const j = rev[i]; if (j > i) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+    const sg = inverse ? -1 : 1;
+    for (let size = 2; size <= n; size <<= 1) {
+      const half = size >> 1, step = n / size;
+      for (let i = 0; i < n; i += size) for (let j = 0; j < half; j++) {
+        const wr = c[j * step], wi = sg * s[j * step];
+        const a = i + j, b = a + half;
+        const tr = re[b] * wr - im[b] * wi, ti = re[b] * wi + im[b] * wr;
+        re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
+      }
+    }
+    if (inverse) for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+  }
+  // arbitrary-length FFT via Bluestein
+  const bsCache = new Map();
+  function fftAny(re, im, inverse) {
+    const n = re.length;
+    if ((n & (n - 1)) === 0) return fft(re, im, inverse);
+    let B = bsCache.get(n);
+    if (!B) {
+      let m = 1; while (m < 2 * n - 1) m <<= 1;
+      const wr = new Float64Array(n), wi = new Float64Array(n);
+      for (let k = 0; k < n; k++) { const a = Math.PI * ((k * k) % (2 * n)) / n; wr[k] = Math.cos(a); wi[k] = Math.sin(a); }
+      const br = new Float64Array(m), bi = new Float64Array(m);
+      br[0] = wr[0]; bi[0] = wi[0];
+      for (let k = 1; k < n; k++) { br[k] = br[m - k] = wr[k]; bi[k] = bi[m - k] = wi[k]; }
+      fft(br, bi, false);
+      B = { m, wr, wi, br, bi, ar: new Float64Array(m), ai: new Float64Array(m) }; bsCache.set(n, B);
+    }
+    const { m, wr, wi, br, bi, ar, ai } = B, sg = inverse ? -1 : 1;
+    ar.fill(0); ai.fill(0);
+    // a_k = x_k * conj(w_k) (forward: chirp e^{-i pi k^2/n})
+    for (let k = 0; k < n; k++) { const cr = wr[k], ci = -sg * wi[k]; ar[k] = re[k] * cr - im[k] * ci; ai[k] = re[k] * ci + im[k] * cr; }
+    fft(ar, ai, false);
+    for (let k = 0; k < m; k++) {
+      const bR = br[k], bI = sg * bi[k];
+      const r = ar[k] * bR - ai[k] * bI, i = ar[k] * bI + ai[k] * bR; ar[k] = r; ai[k] = i;
+    }
+    fft(ar, ai, true);
+    for (let k = 0; k < n; k++) { const cr = wr[k], ci = -sg * wi[k]; let r = ar[k] * cr - ai[k] * ci, i = ar[k] * ci + ai[k] * cr; if (inverse) { r /= n; i /= n; } re[k] = r; im[k] = i; }
+  }
+  // DCT-II (unnormalised): X[k] = sum x[n] cos(pi k (2n+1) / 2N)  (Makhoul)
+  function makeDCT(n) {
+    const re = new Float64Array(n), im = new Float64Array(n);
+    const wc = new Float64Array(n), ws = new Float64Array(n);
+    for (let k = 0; k < n; k++) { wc[k] = Math.cos(Math.PI * k / (2 * n)); ws[k] = Math.sin(Math.PI * k / (2 * n)); }
+    return {
+      fwd(x, out) {
+        for (let i = 0; i < n / 2; i++) { re[i] = x[2 * i]; re[n - 1 - i] = x[2 * i + 1]; }
+        im.fill(0); fftAny(re, im, false);
+        for (let k = 0; k < n; k++) out[k] = re[k] * wc[k] + im[k] * ws[k]; // Re(V e^{-i pi k/2N})
+      },
+      inv(X, out) {
+        for (let k = 0; k < n; k++) {
+          const a = X[k], b = k === 0 ? 0 : -X[n - k]; // Z = a + i b
+          re[k] = a * wc[k] - b * ws[k]; im[k] = a * ws[k] + b * wc[k]; // Z e^{+i pi k/2N}
+        }
+        fftAny(re, im, true);
+        for (let i = 0; i < n / 2; i++) { out[2 * i] = re[i]; out[2 * i + 1] = re[n - 1 - i]; }
+      }
+    };
+  }
+  const pow2 = v => { let p = 1; while (p < v) p <<= 1; return Math.max(p, 2); };
+
+  // Solve Laplacian(h) = div(gx,gy), Neumann, via DCT on power-of-2 padded grid
+  function poisson(gx, gy, w, h) {
+    if (w % 2 || h % 2) throw new Error('poisson needs even dims');
+    const W = w, H = h;
+    const f = new Float64Array(W * H);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      f[y * W + x] = gx[i] - (x > 0 ? gx[i - 1] : 0) + gy[i] - (y > 0 ? gy[i - w] : 0);
+    }
+    // cells outside region: divergence of zero field, except the boundary terms are handled since g=0 at last col/row
+    const dx = makeDCT(W), dy = makeDCT(H);
+    const row = new Float64Array(W), rowo = new Float64Array(W), col = new Float64Array(H), colo = new Float64Array(H);
+    for (let y = 0; y < H; y++) { const o = y * W; for (let x = 0; x < W; x++) row[x] = f[o + x]; dx.fwd(row, rowo); for (let x = 0; x < W; x++) f[o + x] = rowo[x]; }
+    for (let x = 0; x < W; x++) { for (let y = 0; y < H; y++) col[y] = f[y * W + x]; dy.fwd(col, colo); for (let y = 0; y < H; y++) f[y * W + x] = colo[y]; }
+    const cx = new Float64Array(W), cy = new Float64Array(H);
+    for (let k = 0; k < W; k++) cx[k] = 2 * Math.cos(Math.PI * k / W) - 2;
+    for (let l = 0; l < H; l++) cy[l] = 2 * Math.cos(Math.PI * l / H) - 2;
+    for (let l = 0; l < H; l++) for (let k = 0; k < W; k++) { const d = cx[k] + cy[l]; f[l * W + k] = d === 0 ? 0 : f[l * W + k] / d; }
+    for (let x = 0; x < W; x++) { for (let y = 0; y < H; y++) col[y] = f[y * W + x]; dy.inv(col, colo); for (let y = 0; y < H; y++) f[y * W + x] = colo[y]; }
+    const out = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) { const o = y * W; for (let x = 0; x < W; x++) row[x] = f[o + x]; dx.inv(row, rowo); for (let x = 0; x < w; x++) out[y * w + x] = rowo[x]; }
+    return out;
+  }
+
+  // ---------- helpers ----------
+  function percentile(arr, p, M) {
+    if (p <= 0 || p >= 100) {   // exact min / max over every pixel (subsampling could miss the true peak and clip it)
+      let v = p <= 0 ? Infinity : -Infinity, hit = false;
+      for (let i = 0; i < arr.length; i++) { if (M && !M[i]) continue; hit = true; const a = arr[i]; if (p <= 0 ? a < v : a > v) v = a; }
+      return hit ? v : 0;
+    }
+    const n = arr.length, step = Math.max(1, Math.floor(n / 200000)), s = [];
+    for (let i = 0; i < n; i += step) if (!M || M[i]) s.push(arr[i]);
+    if (!s.length) return 0;
+    s.sort((a, b) => a - b);
+    return s[Math.min(s.length - 1, Math.max(0, Math.round(p / 100 * (s.length - 1))))];
+  }
+  function normalize(arr, pLo = 0, pHi = 100, M) {
+    const lo = percentile(arr, pLo, M), hi = percentile(arr, pHi, M), r = hi - lo || 1;
+    const o = new Float32Array(arr.length);
+    for (let i = 0; i < arr.length; i++) o[i] = Math.min(1, Math.max(0, (arr[i] - lo) / r));
+    return o;
+  }
+
+  // ---------- masks ----------
+  // normalized convolution: blur inside mask only, no bleed across the silhouette
+  function maskedBlur(f, M, w, h, sigma) {
+    const N = w * h, fm = new Float32Array(N), m = new Float32Array(N);
+    for (let i = 0; i < N; i++) { m[i] = M[i]; fm[i] = M[i] ? f[i] : 0; }
+    const a = blur(fm, w, h, sigma), b = blur(m, w, h, sigma), o = new Float32Array(N);
+    for (let i = 0; i < N; i++) o[i] = M[i] ? a[i] / Math.max(b[i], 1e-6) : f[i];
+    return o;
+  }
+  function otsu(arr, M) {
+    const bins = 256, hist = new Float64Array(bins); let n = 0;
+    for (let i = 0; i < arr.length; i += 3) { if (M && !M[i]) continue; hist[Math.min(255, Math.max(0, arr[i] * 255 | 0))]++; n++; }
+    let sum = 0; for (let i = 0; i < bins; i++) sum += i * hist[i];
+    let sB = 0, wB = 0, best = 0, th = 128, th2 = 128;
+    for (let t = 0; t < bins; t++) { wB += hist[t]; if (!wB) continue; const wF = n - wB; if (!wF) break; sB += t * hist[t];
+      const mB = sB / wB, mF = (sum - sB) / wF, v = wB * wF * (mB - mF) ** 2; if (v > best * (1 + 1e-9)) { best = v; th = t; th2 = t; } else if (v >= best * (1 - 1e-9)) th2 = t; }
+    return ((th + th2) / 2 + 0.5) / 255;
+  }
+  // threshold a 0..1 field, then close+open by `clean` px, keep components larger than minArea fraction
+  // threshold a field (value > cutoff = subject). cutoff <= 0 keeps everything. Clean-up only when clean > 0:
+  // close+open by `clean` px, drop specks and fill pinholes smaller than minArea.
+  function buildMask(f, w, h, cutoff, clean, minArea = 0.002) {
+    const N = w * h, M = new Uint8Array(N);
+    if (cutoff <= 0) { M.fill(1); return M; }
+    for (let i = 0; i < N; i++) M[i] = f[i] > cutoff ? 1 : 0;
+    if (clean > 0.25) {
+      const morph = (thr) => { const b = blur(Float32Array.from(M), w, h, clean); for (let i = 0; i < N; i++) M[i] = b[i] > thr ? 1 : 0; };
+      morph(0.25); morph(0.75);
+      morph(0.75); morph(0.25);
+      const area = minArea * Math.min(1, clean / 4);
+      const lab = labels(M, w, h), cnt = new Map();
+      for (let i = 0; i < N; i++) if (lab[i]) cnt.set(lab[i], (cnt.get(lab[i]) || 0) + 1);
+      for (let i = 0; i < N; i++) if (lab[i] && cnt.get(lab[i]) < area * N) M[i] = 0;
+      const inv = new Uint8Array(N); for (let i = 0; i < N; i++) inv[i] = 1 - M[i];
+      const lb = labels(inv, w, h), cb = new Map(), touches = new Set();
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x, l = lb[i]; if (!l) continue; cb.set(l, (cb.get(l) || 0) + 1); if (x === 0 || y === 0 || x === w - 1 || y === h - 1) touches.add(l); }
+      for (let i = 0; i < N; i++) { const l = lb[i]; if (l && !touches.has(l) && cb.get(l) < area * N) M[i] = 1; }
+    }
+    return M;
+  }
+  // 4-connected component labels (0 = background)
+  function labels(M, w, h) {
+    const N = w * h, L = new Int32Array(N), st = new Int32Array(N); let next = 0;
+    for (let s = 0; s < N; s++) {
+      if (!M[s] || L[s]) continue; next++; let sp = 0; st[sp++] = s; L[s] = next;
+      while (sp) { const i = st[--sp], x = i % w;
+        if (x > 0 && M[i - 1] && !L[i - 1]) { L[i - 1] = next; st[sp++] = i - 1; }
+        if (x < w - 1 && M[i + 1] && !L[i + 1]) { L[i + 1] = next; st[sp++] = i + 1; }
+        if (i >= w && M[i - w] && !L[i - w]) { L[i - w] = next; st[sp++] = i - w; }
+        if (i + w < N && M[i + w] && !L[i + w]) { L[i + w] = next; st[sp++] = i + w; } }
+    }
+    return L;
+  }
+  // exact Euclidean distance (px) from each mask pixel to the nearest background pixel; borderInside: frame edge isn't background
+  function edt(M, w, h, borderInside) {
+    const N = w * h, INF = 1e20, f = new Float64Array(Math.max(w, h)), d = new Float64Array(Math.max(w, h)), v = new Int32Array(Math.max(w, h)), z = new Float64Array(Math.max(w, h) + 1);
+    const g = new Float64Array(N);
+    for (let i = 0; i < N; i++) g[i] = M[i] ? INF : 0;
+    const pass = (n, get, set) => {
+      for (let q = 0; q < n; q++) f[q] = get(q);
+      let k = 0; v[0] = 0; z[0] = -INF; z[1] = INF;
+      for (let q = 1; q < n; q++) {
+        let s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+        while (s <= z[k]) { k--; s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]); }
+        k++; v[k] = q; z[k] = s; z[k + 1] = INF;
+      }
+      k = 0; for (let q = 0; q < n; q++) { while (z[k + 1] < q) k++; d[q] = (q - v[k]) * (q - v[k]) + f[v[k]]; }
+      for (let q = 0; q < n; q++) set(q, d[q]);
+    };
+    // without borderInside, pretend there is a background ring just outside the frame
+    const pad = !borderInside;
+    for (let x = 0; x < w; x++) pass(h, y => g[y * w + x], (y, val) => { g[y * w + x] = pad ? Math.min(val, (y + 1) * (y + 1), (h - y) * (h - y)) : val; });
+    for (let y = 0; y < h; y++) pass(w, x => g[y * w + x], (x, val) => { g[y * w + x] = pad ? Math.min(val, (x + 1) * (x + 1), (w - x) * (w - x)) : val; });
+    const out = new Float32Array(N); for (let i = 0; i < N; i++) out[i] = M[i] ? Math.max(0, Math.sqrt(g[i]) - 0.5) : 0;
+    return out;
+  }
+  // chamfer distance (px) from each mask pixel to the nearest background pixel
+  function distInside(M, w, h, borderInside) {
+    const N = w * h, d = new Float32Array(N), INF = 1e9, a = 1, b = Math.SQRT2;
+    for (let i = 0; i < N; i++) d[i] = M[i] ? INF : 0;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (!d[i]) continue; let v = d[i];
+      if (x > 0) v = Math.min(v, d[i - 1] + a); else if (!borderInside) v = Math.min(v, a);
+      if (y > 0) { v = Math.min(v, d[i - w] + a); if (x > 0) v = Math.min(v, d[i - w - 1] + b); if (x < w - 1) v = Math.min(v, d[i - w + 1] + b); } else if (!borderInside) v = Math.min(v, a);
+      d[i] = v; }
+    for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) { const i = y * w + x; if (!d[i]) continue; let v = d[i];
+      if (x < w - 1) v = Math.min(v, d[i + 1] + a); else if (!borderInside) v = Math.min(v, a);
+      if (y < h - 1) { v = Math.min(v, d[i + w] + a); if (x < w - 1) v = Math.min(v, d[i + w + 1] + b); if (x > 0) v = Math.min(v, d[i + w - 1] + b); } else if (!borderInside) v = Math.min(v, a);
+      d[i] = v; }
+    return d;
+  }
+  // ---- masked Poisson: edge-validity graph, compact PCG, cascadic multigrid ----
+  // Ex[i]=1: edge i->i+1 used with target Gx[i];  Ey[i]=1: edge i->i+w used with target Gy[i]
+  function cgEdges(Gx, Gy, Ex, Ey, w, h, init, iters, tol) {
+    const N = w * h, id = new Int32Array(N).fill(-1); let n = 0;
+    for (let i = 0; i < N; i++) if (Ex[i] || Ey[i] || (i % w > 0 && Ex[i - 1]) || (i >= w && Ey[i - w])) id[i] = n++;
+    const pix = new Int32Array(n), E = new Int32Array(n).fill(-1), Wn = new Int32Array(n).fill(-1), S = new Int32Array(n).fill(-1), Nn = new Int32Array(n).fill(-1);
+    const wE = new Float64Array(n), wW = new Float64Array(n), wS = new Float64Array(n), wN = new Float64Array(n);
+    const deg = new Float64Array(n), b = new Float64Array(n), x = new Float64Array(n);
+    for (let i = 0; i < N; i++) { const k = id[i]; if (k < 0) continue; pix[k] = i; x[k] = init ? init[i] : 0;
+      if (Ex[i]) { const j = id[i + 1], a = Ex[i]; E[k] = j; Wn[j] = k; wE[k] = a; wW[j] = a; deg[k] += a; deg[j] += a; b[k] -= a * Gx[i]; b[j] += a * Gx[i]; }
+      if (Ey[i]) { const j = id[i + w], a = Ey[i]; S[k] = j; Nn[j] = k; wS[k] = a; wN[j] = a; deg[k] += a; deg[j] += a; b[k] -= a * Gy[i]; b[j] += a * Gy[i]; } }
+    const r = new Float64Array(n), z = new Float64Array(n), p = new Float64Array(n), q = new Float64Array(n);
+    const Ax = (v, o) => { for (let k = 0; k < n; k++) { let s = deg[k] * v[k]; let j;
+      if ((j = E[k]) >= 0) s -= wE[k] * v[j]; if ((j = Wn[k]) >= 0) s -= wW[k] * v[j]; if ((j = S[k]) >= 0) s -= wS[k] * v[j]; if ((j = Nn[k]) >= 0) s -= wN[k] * v[j]; o[k] = s; } };
+    Ax(x, q); let bn = 0, rz = 0;
+    for (let k = 0; k < n; k++) { r[k] = b[k] - q[k]; bn += b[k] * b[k]; z[k] = deg[k] ? r[k] / deg[k] : 0; p[k] = z[k]; rz += r[k] * z[k]; }
+    bn = Math.sqrt(bn) || 1; let it = 0;
+    for (; it < iters; it++) {
+      Ax(p, q); let pq = 0; for (let k = 0; k < n; k++) pq += p[k] * q[k];
+      if (Math.abs(pq) < 1e-30) break;
+      const al = rz / pq; let rn = 0, rz2 = 0;
+      for (let k = 0; k < n; k++) { x[k] += al * p[k]; const rk = r[k] - al * q[k]; r[k] = rk; rn += rk * rk; const zk = deg[k] ? rk / deg[k] : 0; z[k] = zk; rz2 += rk * zk; }
+      if (Math.sqrt(rn) / bn < tol) { it++; break; }
+      const be = rz2 / rz; rz = rz2;
+      for (let k = 0; k < n; k++) p[k] = z[k] + be * p[k];
+    }
+    const out = new Float32Array(N); for (let k = 0; k < n; k++) out[pix[k]] = x[k];
+    out.iters = it; return out;
+  }
+  function mgSolve(Gx, Gy, Ex, Ey, w, h, fineIters, depth = 0) {
+    let n = 0; for (let i = 0; i < w * h; i++) if (Ex[i] || Ey[i]) n++;
+    if (n < 30000 || w < 24 || h < 24) return cgEdges(Gx, Gy, Ex, Ey, w, h, null, 3000, 1e-7);
+    const w2 = (w + 1) >> 1, h2 = (h + 1) >> 1, N2 = w2 * h2;
+    const gx2 = new Float32Array(N2), gy2 = new Float32Array(N2), ex2 = new Float32Array(N2), ey2 = new Float32Array(N2);
+    for (let Y = 0; Y < h2; Y++) for (let X = 0; X < w2; X++) {
+      const c = Y * w2 + X;
+      if (X < w2 - 1) { let s = 0, m = 0;               // horizontal: paths along rows 2Y, 2Y+1 over x=2X..2X+2
+        for (let dy = 0; dy < 2; dy++) { const y = 2 * Y + dy; if (y >= h) continue; const i = y * w + 2 * X;
+          if (2 * X + 2 < w && Ex[i] && Ex[i + 1]) { const a = Math.min(Ex[i], Ex[i + 1]); s += a * (Gx[i] + Gx[i + 1]); m += a; if (a > ex2[c]) ex2[c] = a; } }
+        if (m) gx2[c] = s / m; }
+      if (Y < h2 - 1) { let s = 0, m = 0;
+        for (let dx = 0; dx < 2; dx++) { const x = 2 * X + dx; if (x >= w) continue; const i = 2 * Y * w + x;
+          if (2 * Y + 2 < h && Ey[i] && Ey[i + w]) { const a = Math.min(Ey[i], Ey[i + w]); s += a * (Gy[i] + Gy[i + w]); m += a; if (a > ey2[c]) ey2[c] = a; } }
+        if (m) gy2[c] = s / m; }
+    }
+    const H2 = mgSolve(gx2, gy2, ex2, ey2, w2, h2, fineIters, depth + 1);
+    const init = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) init[y * w + x] = H2[(y >> 1) * w2 + (x >> 1)];
+    return cgEdges(Gx, Gy, Ex, Ey, w, h, init, fineIters * (depth ? 1 : 1.5) | 0, 1e-6);
+  }
+  function poissonMasked(Gx, Gy, M, w, h, iters = 60) {
+    const N = w * h, Ex = new Uint8Array(N), Ey = new Uint8Array(N);
+    for (let i = 0; i < N; i++) { if (!M[i]) continue; if (i % w < w - 1 && M[i + 1]) Ex[i] = 1; if (i + w < N && M[i + w]) Ey[i] = 1; }
+    return mgSolve(Gx, Gy, Ex, Ey, w, h, iters);
+  }
+
+  // ---------- background floor ----------
+  // Smoothly fills a field from its known pixels (K=1) into the unknown ones (push-pull pyramid, then a light
+  // smoothing of the filled part). Known pixels keep their exact values.
+  function floorFill(H, K, w, h) {
+    const lv = [{ v: new Float32Array(w * h), c: new Float32Array(w * h), w, h }];
+    for (let i = 0; i < w * h; i++) if (K[i]) { lv[0].v[i] = H[i]; lv[0].c[i] = 1; }
+    while (lv[lv.length - 1].w > 2 || lv[lv.length - 1].h > 2) {   // pull: average known values down the pyramid
+      const a = lv[lv.length - 1], W2 = Math.ceil(a.w / 2), H2 = Math.ceil(a.h / 2), v = new Float32Array(W2 * H2), c = new Float32Array(W2 * H2);
+      for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) { const i = y * a.w + x, j = (y >> 1) * W2 + (x >> 1); v[j] += a.v[i]; c[j] += a.c[i]; }
+      lv.push({ v, c, w: W2, h: H2 });
+    }
+    for (const l of lv) for (let i = 0; i < l.v.length; i++) l.v[i] = l.c[i] > 0 ? l.v[i] / l.c[i] : 0;
+    for (let k = lv.length - 2; k >= 0; k--) {   // push: blend each level with the bilinear upsample of the coarser one
+      const a = lv[k], b = lv[k + 1];
+      for (let y = 0; y < a.h; y++) { const fy = Math.min(b.h - 1, Math.max(0, (y + 0.5) / 2 - 0.5)), y0 = Math.floor(fy), y1 = Math.min(b.h - 1, y0 + 1), ty = fy - y0;
+        for (let x = 0; x < a.w; x++) { const fx = Math.min(b.w - 1, Math.max(0, (x + 0.5) / 2 - 0.5)), x0 = Math.floor(fx), x1 = Math.min(b.w - 1, x0 + 1), tx = fx - x0;
+          const up = (b.v[y0 * b.w + x0] * (1 - tx) + b.v[y0 * b.w + x1] * tx) * (1 - ty) + (b.v[y1 * b.w + x0] * (1 - tx) + b.v[y1 * b.w + x1] * tx) * ty;
+          const i = y * a.w + x, t = Math.min(1, a.c[i] / (k ? 4 : 1)); a.v[i] = a.v[i] * t + up * (1 - t); } }
+    }
+    const F = lv[0].v, U = new Float32Array(w * h); let any = false;
+    for (let i = 0; i < w * h; i++) if (!K[i]) { U[i] = 1; any = true; }
+    if (!any) return F;
+    // smooth the filled region a little (blockiness from the coarse levels), blended back in so the seam stays continuous
+    const s = Math.max(2, Math.max(w, h) * 0.01), Fb = blur(F, w, h, s), Ub = blur(U, w, h, s * 0.5);
+    for (let i = 0; i < w * h; i++) if (!K[i]) { const t = Math.min(1, Ub[i] * 1.5); F[i] = F[i] * (1 - t) + Fb[i] * t; }
+    return F;
+  }
+
+  // ---------- local field floor ("rolling ball") ----------
+  // Grey opening (erode then dilate, square window of half-size r, O(N) per pass via van Herk / Gil-Werman) gives the
+  // underlying field level with raised features narrower than ~2r ignored; smoothed, it is the floor to subtract.
+  function minmax1D(src, dst, n, stride, off, r, isMin, BIG) {
+    const L = 2 * r + 1, g = new Float32Array(n + L), hb = new Float32Array(n + L);
+    const get = k => { const j = k - r; return j < 0 || j >= n ? BIG : src[off + j * stride]; };
+    const tot = n + 2 * r, op = isMin ? Math.min : Math.max;
+    for (let k = 0; k < tot; k++) g[k] = k % L === 0 ? get(k) : op(g[k - 1], get(k));
+    for (let k = tot - 1; k >= 0; k--) hb[k] = (k % L === L - 1 || k === tot - 1) ? get(k) : op(hb[k + 1], get(k));
+    for (let j = 0; j < n; j++) dst[off + j * stride] = op(hb[j], g[j + 2 * r]);
+  }
+  function fieldFloor(H, M, w, h, r) {
+    const N = w * h, A = new Float32Array(N), B = new Float32Array(N), INF = 1e30;
+    for (let i = 0; i < N; i++) A[i] = !M || M[i] ? H[i] : INF;
+    for (let y = 0; y < h; y++) minmax1D(A, B, w, 1, y * w, r, true, INF);      // erode
+    for (let x = 0; x < w; x++) minmax1D(B, A, h, w, x, r, true, INF);
+    for (let i = 0; i < N; i++) if (M && !M[i]) A[i] = -INF;
+    for (let y = 0; y < h; y++) minmax1D(A, B, w, 1, y * w, r, false, -INF);   // dilate
+    for (let x = 0; x < w; x++) minmax1D(B, A, h, w, x, r, false, -INF);
+    for (let i = 0; i < N; i++) if (A[i] < -1e29 || A[i] > 1e29) A[i] = H[i];
+    return M ? maskedBlur(A, M, w, h, r * 0.5) : blur(A, w, h, r * 0.5);
+  }
+
+  // Floor from the field's heights by multi-scale normalized convolution: each pixel takes a Gaussian-weighted average of
+  // nearby field heights; where there is little field nearby a wider scale takes over, blended smoothly (no seams).
+  function smoothFloor(H, K, w, h, L) {
+    const N = w * h, v = new Float32Array(N), k = new Float32Array(N);
+    for (let i = 0; i < N; i++) if (K[i]) { v[i] = H[i]; k[i] = 1; }
+    const scales = [0.03, 0.06, 0.12, 0.25].map(f => Math.max(2, f * L));
+    let F = null;
+    for (let si = scales.length - 1; si >= 0; si--) {          // coarse → fine
+      const num = blur(v, w, h, scales[si]), den = blur(k, w, h, scales[si]);
+      if (!F) { F = new Float32Array(N); for (let i = 0; i < N; i++) F[i] = den[i] > 1e-6 ? num[i] / den[i] : 0; continue; }
+      for (let i = 0; i < N; i++) { const t = Math.min(1, den[i] / 0.35); if (t <= 0) continue; const a = t * t * (3 - 2 * t);
+        F[i] = F[i] * (1 - a) + (num[i] / Math.max(den[i], 1e-6)) * a; }
+    }
+    return F;
+  }
+  // Field = the largest flat region of the subject, fenced off from raised features by their steep walls (read from
+  // the normals). Its smooth level is measured, filled in under the features, and returned as the floor to subtract.
+  function fieldFromNormals(H, nz, M, w, h) {
+    const N = w * h, L = Math.max(w, h), nzs = maskedBlur(Float32Array.from(nz), M, w, h, Math.max(1, L * 0.002));
+    let area = 0; for (let i = 0; i < N; i++) area += M[i];
+    for (const thr of [0.95, 0.92, 0.88]) {
+      const flat = new Uint8Array(N); for (let i = 0; i < N; i++) flat[i] = M[i] && nzs[i] > thr ? 1 : 0;
+      const lab = labels(flat, w, h), cnt = new Map(); for (let i = 0; i < N; i++) if (lab[i]) cnt.set(lab[i], (cnt.get(lab[i]) || 0) + 1);
+      let best = 0, bc = 0; for (const [l, c] of cnt) if (c > bc) { bc = c; best = l; }
+      if (bc < area * 0.12) continue;            // too little field found: loosen the flatness test
+      const F0 = new Uint8Array(N); for (let i = 0; i < N; i++) F0[i] = lab[i] === best ? 1 : 0;
+      const d = edt(F0, w, h, false), K = new Uint8Array(N); for (let i = 0; i < N; i++) K[i] = F0[i] && d[i] > 2 ? 1 : 0;
+      // height check: flat areas that stand clearly ABOVE the fitted floor (a cheek, a plateau, a lettering top that
+      // got connected) are features, not field – drop them and refit
+      let Fl = null;
+      for (let it = 0; it < 4; it++) {
+        Fl = smoothFloor(H, K, w, h, L);   // smooth by construction: no facets or creases under intricate features
+        if (it === 3) break;
+        const res = []; for (let i = 0; i < N; i += 7) if (K[i]) res.push(Math.abs(H[i] - Fl[i]));
+        if (!res.length) break; res.sort((a, b) => a - b);
+        let lo = Infinity, hi = -Infinity; for (let i = 0; i < N; i++) if (M[i]) { if (H[i] < lo) lo = H[i]; if (H[i] > hi) hi = H[i]; }
+        const tol = Math.max(3 * 1.4826 * res[res.length >> 1], (hi - lo) * 0.01);
+        let drop = 0; for (let i = 0; i < N; i++) if (K[i] && H[i] - Fl[i] > tol) { K[i] = 0; drop++; }
+        if (!drop) break;
+      }
+      return Fl;
+    }
+    return null;
+  }
+
+  // ---------- plane / dome shaping ----------
+  // Fits H ≈ a + b·x + c·y + d·r² over the subject (least squares), then removes the fitted tilt / dome by the
+  // chosen amount (100% = level, 200% = reversed) and adds manual ramps. Coordinates are normalised to the
+  // subject's bounding box (x, y ∈ ±0.5), heights to the subject's range, so 1 = a ramp as tall as the relief.
+  function planeShape(H, w, h, M, P) {
+    const N = w * h; let x0 = w, x1 = 0, y0 = h, y1 = 0, lo = Infinity, hi = -Infinity;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (M && !M[i]) continue;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (H[i] < lo) lo = H[i]; if (H[i] > hi) hi = H[i]; }
+    if (x1 < x0 || hi - lo < 1e-9) return H;
+    const R = hi - lo, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, sx = 1 / Math.max(1, x1 - x0), sy = 1 / Math.max(1, y1 - y0);
+    let b = 0, c = 0, d = 0;
+    if (P.planeLevel || P.domeLevel) {
+      // robust fit of [1, x, y, r²]: iteratively re-weighted (Tukey), so raised features (a central emblem, a rim,
+      // lettering) are ignored and the curve settles on the underlying field
+      const st = Math.max(1, Math.floor(Math.sqrt(N / 250000))), U = [], V = [], Z = [];
+      for (let y = y0; y <= y1; y += st) for (let x = x0; x <= x1; x += st) { const i = y * w + x; if (M && !M[i]) continue;
+        U.push((x - cx) * sx); V.push((y - cy) * sy); Z.push(H[i]); }
+      const n = Z.length, wt = new Float64Array(n).fill(1); let coef = [0, 0, 0, 0];
+      for (let it = 0; it < 8; it++) {
+        const A = Array.from({ length: 4 }, () => new Float64Array(5));
+        for (let k = 0; k < n; k++) { const ww = wt[k]; if (!ww) continue; const u = U[k], v = V[k], f = [1, u, v, u * u + v * v], z = Z[k];
+          for (let r = 0; r < 4; r++) { const fr = ww * f[r]; for (let q = 0; q < 4; q++) A[r][q] += fr * f[q]; A[r][4] += fr * z; } }
+        for (let r = 0; r < 4; r++) {   // Gauss-Jordan with partial pivoting
+          let pv = r; for (let k = r + 1; k < 4; k++) if (Math.abs(A[k][r]) > Math.abs(A[pv][r])) pv = k; [A[r], A[pv]] = [A[pv], A[r]];
+          const q = A[r][r]; if (Math.abs(q) < 1e-12) continue; for (let k = r; k < 5; k++) A[r][k] /= q;
+          for (let k = 0; k < 4; k++) if (k !== r) { const m = A[k][r]; for (let j = r; j < 5; j++) A[k][j] -= m * A[r][j]; } }
+        coef = [A[0][4], A[1][4], A[2][4], A[3][4]];
+        const res = new Float64Array(n); for (let k = 0; k < n; k++) { const u = U[k], v = V[k]; res[k] = Z[k] - (coef[0] + coef[1] * u + coef[2] * v + coef[3] * (u * u + v * v)); }
+        const ab = Array.from(res, Math.abs).sort((a, b) => a - b), sc = 1.4826 * ab[n >> 1] + 1e-9 * R, cT = 3 * sc;
+        for (let k = 0; k < n; k++) { const t = res[k] / cT; wt[k] = Math.abs(t) < 1 ? (1 - t * t) ** 2 : 0; }
+      }
+      b = coef[1]; c = coef[2]; d = coef[3];
+    }
+    const pl = P.planeLevel || 0, dl = P.domeLevel || 0, tx = (P.tiltX || 0) * R, ty = (P.tiltY || 0) * R, dm = (P.dome || 0) * R * 2;
+    const o = new Float32Array(N);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x, u = (x - cx) * sx, v = (y - cy) * sy, r2 = u * u + v * v;
+      o[i] = H[i] - pl * (b * u + c * v) - dl * d * r2 + tx * u - ty * v + dm * (0.25 - r2); }
+    return o;
+  }
+
+  // ---------- main relief composition ----------
+  // Internal normal convention: x right, y DOWN, z toward viewer.  dh/dx = -nx/nz, dh/dy = -ny/nz.
+  // inputs: {w,h, depth (Float32 disparity, near=high), depthTiles (Float32|null), normal ({nx,ny,nz}|null), lum (Float32|null)}
+  // All gradients in pixel units (height measured in pixels).
+  // Identity-first: with every effect at neutral, output == normalised base depth.
+  // Effects change the TARGET gradients; only the change (delta) goes through Poisson, so solver error never touches the base.
+  function compose(inp, P) {
+    const { w, h } = inp, L = Math.max(w, h), N = w * h, M = inp.mask || null, AL = M ? inp.alpha || null : null;
+    const Mc = AL ? Uint8Array.from(AL, a => a > 0.5 ? 1 : 0) : M;   // statistics from the solid interior, not the soft fringe
+    const B = (f, s) => M ? maskedBlur(f, M, w, h, s) : blur(f, w, h, s);
+    const sig = Math.max(1, P.baseScale / 100 * L);
+    const zr = P.depthRelief * L;
+    const base = normalize(inp.depth, 0, 100, Mc);   // full range: nothing is clipped unless Clip highlights/shadows ask for it
+    for (let i = 0; i < N; i++) base[i] *= zr;
+    const [bx, by] = grad(base, w, h);
+    // target gradients start as the base's own
+    let Gx, Gy;
+    if (P.baseSmooth > 0.05) { [Gx, Gy] = grad(B(base, P.baseSmooth / 100 * L), w, h); }
+    else { Gx = Float32Array.from(bx); Gy = Float32Array.from(by); }
+    if (P.formWeight !== 1) for (let i = 0; i < N; i++) { Gx[i] *= P.formWeight; Gy[i] *= P.formWeight; }
+    // fusion confidence: where normals can't be trusted (edge-on surfaces, right at the outline, real depth steps)
+    // the depth keeps its own detail and the normals' detail is held back. w = 1 means "normals trusted here".
+    let Wt = null;
+    const swap = inp.normal ? (P.detailSwap || 0) : 0, trust = inp.normal ? (P.trustEdges || 0) : 0;
+    if (trust > 0) {
+      const { nz } = inp.normal, tau = P.edgeThresh || 1, sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+      const [gbx, gby] = grad(B(base, 1), w, h), dEdge = M ? edt(M, w, h, false) : null;
+      Wt = new Float32Array(N);
+      for (let i = 0; i < N; i++) {
+        const wn = sm(0.2, 0.5, nz[i]), we = dEdge ? sm(1.5, 4, dEdge[i]) : 1, ws = 1 - sm(0.5 * tau, tau, Math.hypot(gbx[i], gby[i]));
+        Wt[i] = 1 - trust * (1 - wn * we * ws);
+      }
+      Wt = B(Wt, 2);
+    }
+    // normals replace the depth's own fine detail (soft, noisy, tile seams) instead of adding on top of it
+    if (swap > 0) {
+      const lx = B(Gx, sig), ly = B(Gy, sig);
+      for (let i = 0; i < N; i++) { const k = swap * (Wt ? Wt[i] : 1); Gx[i] -= k * (Gx[i] - lx[i]); Gy[i] -= k * (Gy[i] - ly[i]); }
+    }
+    // + normals (high-passed slopes)
+    if (inp.normal && P.normalGain > 0) {
+      const { nx, ny, nz } = inp.normal, cap = P.slopeCap;
+      let px = new Float32Array(N), py = new Float32Array(N);
+      for (let i = 0; i < N; i++) { const z = Math.max(1e-3, nz[i]);
+        px[i] = Math.max(-cap, Math.min(cap, -nx[i] / z)); py[i] = Math.max(-cap, Math.min(cap, -ny[i] / z)); }
+      if (P.normalSmooth > 0.3) { px = B(px, P.normalSmooth); py = B(py, P.normalSmooth); }
+      const qx = B(px, sig), qy = B(py, sig), k = P.normalGain;
+      for (let i = 0; i < N; i++) { const kk = Wt ? k * Wt[i] : k; Gx[i] += kk * (px[i] - qx[i]); Gy[i] += kk * (py[i] - qy[i]); }
+    }
+    // + other depth map's fine detail
+    if (inp.depthTiles && P.tileDetail > 0) {
+      const f = normalize(inp.depthTiles, 0, 100, Mc); for (let i = 0; i < N; i++) f[i] *= zr;
+      const fs = B(f, 0.8), lo = B(fs, sig); for (let i = 0; i < N; i++) lo[i] = fs[i] - lo[i];
+      const [dx, dy] = grad(lo, w, h); for (let i = 0; i < N; i++) { Gx[i] += P.tileDetail * dx[i]; Gy[i] += P.tileDetail * dy[i]; }
+    }
+    // + clay shading micro-detail
+    if (inp.lum && P.shadeGain > 0) {
+      const ls = B(inp.lum, 0.7), lb = B(ls, Math.max(1, P.shadeScale / 100 * L));
+      for (let i = 0; i < N; i++) lb[i] = ls[i] - lb[i];
+      const [sx, sy] = grad(lb, w, h);
+      for (let i = 0; i < N; i++) { Gx[i] += P.shadeGain * sx[i]; Gy[i] += P.shadeGain * sy[i]; }
+    }
+    // silhouette walls / compression act on the total
+    if (P.edgeFlatten > 0 || P.compress > 0.001) {
+      const tau = P.edgeThresh, keep = 1 - P.edgeFlatten, a = P.compress;
+      for (let i = 0; i < N; i++) { const gx = Gx[i], gy = Gy[i], m = Math.hypot(gx, gy); if (m < 1e-12) continue;
+        let m2 = m > tau ? tau + (m - tau) * keep : m; if (a > 0.001) m2 = Math.log1p(a * m2) / a;
+        const s = m2 / m; Gx[i] = gx * s; Gy[i] = gy * s; }
+    }
+    // delta = target - base; cut at the mask; integrate only if anything changed
+    let dmax = 0;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x;
+      let dx = Gx[i] - bx[i], dy = Gy[i] - by[i];
+      if (M) { if (!M[i] || x === w - 1 || !M[i + 1]) dx = 0; if (!M[i] || y === h - 1 || !M[i + w]) dy = 0; }
+      Gx[i] = dx; Gy[i] = dy; dmax = Math.max(dmax, Math.abs(dx), Math.abs(dy)); }
+    let H = base;
+    if (dmax > 1e-7) {
+      const D = M ? poissonMasked(Gx, Gy, M, w, h, P.cgIters || 60) : poisson(Gx, Gy, w, h);
+      // delta has zero mean per piece, so each piece keeps its base-depth level
+      if (M) { const lab = labels(M, w, h), sm = new Map(), c = new Map();
+        for (let i = 0; i < N; i++) { const l = lab[i]; if (l) { sm.set(l, (sm.get(l) || 0) + D[i]); c.set(l, (c.get(l) || 0) + 1); } }
+        for (let i = 0; i < N; i++) { const l = lab[i]; H[i] = l ? base[i] + D[i] - sm.get(l) / c.get(l) : 0; } }
+      else { let m = 0; for (let i = 0; i < N; i++) m += D[i]; m /= N; for (let i = 0; i < N; i++) H[i] = base[i] + D[i] - m; }
+    }
+    if (P.flatten > 0) { const big = B(H, L / 6); for (let i = 0; i < N; i++) H[i] -= P.flatten * big[i]; }
+    if (P.fieldLevel > 0 && Mc) {
+      const F = (inp.normal && fieldFromNormals(H, inp.normal.nz, Mc, w, h)) || fieldFloor(H, Mc, w, h, Math.max(2, Math.round((P.fieldRadius || 12) / 100 * L)));
+      for (let i = 0; i < N; i++) H[i] -= P.fieldLevel * F[i]; }
+    if (P.planeLevel || P.tiltX || P.tiltY || P.domeLevel || P.dome) H = planeShape(H, w, h, Mc, P);
+    if (P.outSmooth > 0.3) H = B(H, P.outSmooth);
+    H = normalize(H, P.clipLo, 100 - P.clipHi, Mc);
+    if (P.gamma !== 1) for (let i = 0; i < N; i++) H[i] = Math.pow(H[i], P.gamma);
+    if (M) {
+      const base0 = P.baseLift, R = P.roundover, RW = (P.rollW || 0) / 100 * L;
+      let d = null;
+      if (R > 0.3 || RW > 0.5) {   // exact distance to the outline, lightly smoothed so the pixel staircase doesn't print through
+        d = edt(M, w, h, true);
+        d = maskedBlur(d, M, w, h, 1.2);
+      }
+      for (let i = 0; i < N; i++) H[i] = M[i] ? base0 + (1 - base0) * H[i] : 0;
+      // form-aware roll-off: height along the outline (smoothed along the edge) is subtracted with a
+      // quarter-round taper over RW px. High edges roll down, low edges barely change, inner detail is kept.
+      if (RW > 0.5) {
+        // edge height spread inward: normalized convolution of the outline ring, coarse-to-fine so far pixels
+        // get a stable value instead of numerically tiny Gaussian tails
+        const ring = new Float32Array(N), rv = new Float32Array(N);
+        for (let i = 0; i < N; i++) if (M[i] && d[i] <= 2.5) { ring[i] = 1; rv[i] = H[i]; }
+        const E = new Float32Array(N), have = new Uint8Array(N);
+        for (const k of [0.35, 0.7, 1.4, 2.8]) {
+          const sg = Math.max(1.5, RW * k), num = blur(rv, w, h, sg), den = blur(ring, w, h, sg);
+          let mx = 0; for (let i = 0; i < N; i++) if (den[i] > mx) mx = den[i];
+          const th = mx * 0.02; let left = 0;
+          for (let i = 0; i < N; i++) { if (!M[i] || have[i] || d[i] >= RW) continue; if (den[i] > th) { E[i] = num[i] / den[i]; have[i] = 1; } else left++; }
+          if (!left) break;
+        }
+        for (let i = 0; i < N; i++) if (M[i] && !have[i] && d[i] < RW) E[i] = H[i];
+        const Es = maskedBlur(E, M, w, h, Math.max(2, RW * 0.3));            // no streaks from along-edge variation
+        let Wr = new Float32Array(N);
+        for (let i = 0; i < N; i++) { if (!M[i] || d[i] >= RW) continue; const t = d[i] / RW; Wr[i] = 1 - Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t))); }
+        Wr = maskedBlur(Wr, M, w, h, Math.max(1, RW * 0.12));          // soften the crease where two edges' rolls meet
+        for (let i = 0; i < N; i++) { if (!M[i] || Wr[i] <= 0) continue; const hv = H[i], ev = Es[i], dlt = hv - ev, sm = 0.5 * (hv + ev - Math.sqrt(dlt * dlt + 0.0025)); H[i] = Math.max(0, hv - Math.max(0, sm) * Math.min(1, Wr[i])); /* smooth min: no kink where the surface dips below the edge height */ }
+      }
+      for (let i = 0; i < N; i++) {
+        if (!M[i]) continue;
+        let v = H[i];
+        if (R > 0.3) { const t = Math.min(1, d[i] / R); v *= t * t * (3 - 2 * t); }
+        H[i] = AL ? v * AL[i] : v;
+      }
+    }
+    if (P.invert) for (let i = 0; i < N; i++) H[i] = 1 - H[i];
+    return H;
+  }
+
+  // ---------- tiles ----------
+  // square tiles covering w x h; returns [{x0,y0,T}]
+  function tileGrid(w, h, n, overlap) {
+    const L = Math.max(w, h), S = Math.min(w, h);
+    const T = Math.ceil(L / (n - (n - 1) * overlap));
+    const along = (len) => {
+      const k = Math.max(1, Math.ceil((len - T) / (T * (1 - overlap)) - 1e-6) + 1);
+      if (len <= T) return [Math.round((len - T) / 2)];
+      const st = (len - T) / (k - 1); const r = [];
+      for (let i = 0; i < k; i++) r.push(Math.round(i * st));
+      return r;
+    };
+    void S;
+    const xs = along(w), ys = along(h), out = [];
+    for (const y0 of ys) for (const x0 of xs) out.push({ x0, y0, T, TW: T, TH: T });
+    return out;
+  }
+  // feather weight for a tile at working pixel (x,y)
+  function featherW(t, x, y, w, h, feather) {
+    const TW = t.TW || t.T, TH = t.TH || t.T;
+    const f = Math.max(1, feather * Math.min(TW, TH));
+    const lx = x - t.x0, ly = y - t.y0, rx = t.x0 + TW - 1 - x, ry = t.y0 + TH - 1 - y;
+    const ax = (t.x0 <= 0 ? 1 : Math.min(1, (lx + 0.5) / f)) * (t.x0 + TW >= w ? 1 : Math.min(1, (rx + 0.5) / f));
+    const ay = (t.y0 <= 0 ? 1 : Math.min(1, (ly + 0.5) / f)) * (t.y0 + TH >= h ? 1 : Math.min(1, (ry + 0.5) / f));
+    const s = v => v * v * (3 - 2 * v);
+    return s(Math.max(0, ax)) * s(Math.max(0, ay));
+  }
+  // bilinear-sample model output planes (SW x SH each) back into tile rect t (working coords), clipped to image
+  function samplePlanes(planes, SW, SH, t, w, h) {
+    const TW = t.TW || t.T, TH = t.TH || t.T;
+    const x1 = Math.max(0, t.x0), y1 = Math.max(0, t.y0), x2 = Math.min(w, t.x0 + TW), y2 = Math.min(h, t.y0 + TH);
+    const rw = x2 - x1, rh = y2 - y1, sx = SW / TW, sy = SH / TH;
+    const rs = planes.map(() => new Float32Array(rw * rh));
+    for (let y = y1; y < y2; y++) {
+      let v = (y - t.y0 + 0.5) * sy - 0.5; v = Math.min(SH - 1, Math.max(0, v));
+      const v0 = Math.floor(v), v1 = Math.min(SH - 1, v0 + 1), fv = v - v0;
+      for (let x = x1; x < x2; x++) {
+        let u = (x - t.x0 + 0.5) * sx - 0.5; u = Math.min(SW - 1, Math.max(0, u));
+        const u0 = Math.floor(u), u1 = Math.min(SW - 1, u0 + 1), fu = u - u0, o = (y - y1) * rw + (x - x1);
+        for (let p = 0; p < planes.length; p++) {
+          const q = planes[p];
+          const a = q[v0 * SW + u0] * (1 - fu) + q[v0 * SW + u1] * fu, b = q[v1 * SW + u0] * (1 - fu) + q[v1 * SW + u1] * fu;
+          rs[p][o] = a * (1 - fv) + b * fv;
+        }
+      }
+    }
+    return { rs, x1, y1, rw, rh };
+  }
+  function sampleBack(out, S, t, w, h) { const r = samplePlanes([out], S, S, t, w, h); return { r: r.rs[0], x1: r.x1, y1: r.y1, rw: r.rw, rh: r.rh }; }
+  // accumulate a normal tile (3 planes) with feather weights; caller renormalises
+  function accumulateNormalTile(acc, wsum, w, h, t, samp, feather) {
+    const { rs, x1, y1, rw, rh } = samp;
+    for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
+      const X = x + x1, Y = y + y1, i = Y * w + X, o = y * rw + x, wt = featherW(t, X, Y, w, h, feather) + 1e-6;
+      acc[0][i] += wt * rs[0][o]; acc[1][i] += wt * rs[1][o]; acc[2][i] += wt * rs[2][o]; wsum[i] += wt;
+      for (let p = 3; p < rs.length && p < acc.length; p++) acc[p][i] += wt * rs[p][o];
+    }
+  }
+  function renormNormals(n) {
+    const a = n[0], b = n[1], c = n[2];
+    for (let i = 0; i < a.length; i++) { const l = Math.hypot(a[i], b[i], c[i]) || 1; a[i] /= l; b[i] /= l; c[i] /= l; }
+    return n;
+  }
+  // accumulate an aligned tile into acc/wsum; align affinely to reference (global) map
+  function accumulateTile(acc, wsum, ref, w, h, t, samp, feather, Mfit) {
+    const { r, x1, y1, rw, rh } = samp;
+    let sx = 0, sy = 0, sxx = 0, sxy = 0, n = 0;
+    const fit = (useM) => { sx = sy = sxx = sxy = n = 0;
+      for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
+        const gi = (y + y1) * w + x + x1; if (useM && !Mfit[gi]) continue;
+        const a = r[y * rw + x], b = ref[gi];
+        sx += a; sy += b; sxx += a * a; sxy += a * b; n++;
+      } };
+    fit(!!Mfit); if (Mfit && n < 0.02 * rw * rh) fit(false);   // fit on subject only; fall back if tile is nearly all background
+    const mx = sx / n, my = sy / n, vx = sxx / n - mx * mx, cxy = sxy / n - mx * my;
+    let s = vx > 1e-12 ? cxy / vx : 1;
+    if (!(s > 0)) { // fallback: match spread
+      let vy = 0; for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) { const d = ref[(y + y1) * w + x + x1] - my; vy += d * d; }
+      s = Math.sqrt((vy / n) / Math.max(vx, 1e-12));
+    }
+    const b0 = my - s * mx;
+    for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
+      const X = x + x1, Y = y + y1, i = Y * w + X, wt = featherW(t, X, Y, w, h, feather) + 1e-6;
+      acc[i] += wt * (s * r[y * rw + x] + b0); wsum[i] += wt;
+    }
+  }
+
+  // ---------- previews ----------
+  function hillshade(H, w, h, zScale, az = 315, alt = 40) {
+    const out = new Float32Array(w * h), L = Math.max(w, h);
+    const A = az * Math.PI / 180, E = alt * Math.PI / 180;
+    const lx = Math.cos(E) * Math.sin(A) * -1, ly = Math.cos(E) * Math.cos(A) * -1, lz = Math.sin(E);
+    const k = zScale * L * 0.5;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      const dzx = (H[y * w + Math.min(w - 1, x + 1)] - H[y * w + Math.max(0, x - 1)]) * k;
+      const dzy = (H[Math.min(h - 1, y + 1) * w + x] - H[Math.max(0, y - 1) * w + x]) * k;
+      const nx = -dzx, ny = -dzy, nz = 2, nl = Math.hypot(nx, ny, nz);
+      out[i] = Math.max(0, (nx * lx + ny * ly + nz * lz) / nl) * 0.85 + 0.12;
+    }
+    return out;
+  }
+
+  // ---------- fp16 ----------
+  const f32 = new Float32Array(1), u32 = new Uint32Array(f32.buffer);
+  function toHalf(v) {
+    f32[0] = v; const x = u32[0];
+    const sign = (x >>> 16) & 0x8000; let e = ((x >>> 23) & 0xff) - 127 + 15; let m = x & 0x7fffff;
+    if (e <= 0) { if (e < -10) return sign; m = (m | 0x800000) >> (1 - e); return sign | ((m + 0x1000) >> 13); }
+    if (e >= 31) return sign | 0x7c00;
+    const hv = sign | (e << 10) | ((m + 0x1000) >> 13);
+    return hv;
+  }
+  function fromHalf(hv) {
+    const s = hv & 0x8000 ? -1 : 1, e = (hv >> 10) & 0x1f, m = hv & 0x3ff;
+    if (e === 0) return s * m * 5.960464477539063e-8;
+    if (e === 31) return m ? NaN : s * Infinity;
+    return s * (1 + m / 1024) * Math.pow(2, e - 15);
+  }
+
+  // ---------- PNG grayscale 8/16 ----------
+  const crcT = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc(buf) { let c = 0xffffffff; for (let i = 0; i < buf.length; i++) c = crcT[(c ^ buf[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+  async function deflate(data) {
+    if (typeof CompressionStream !== 'undefined') {
+      const cs = new CompressionStream('deflate');
+      const ab = await new Response(new Blob([data]).stream().pipeThrough(cs)).arrayBuffer();
+      return new Uint8Array(ab);
+    }
+    const zlib = await import('node:zlib'); return new Uint8Array(zlib.deflateSync(data));
+  }
+  async function encodePNG(H, w, h, bits = 16) {
+    const bpp = bits / 8, stride = w * bpp + 1, raw = new Uint8Array(stride * h);
+    const max = bits === 16 ? 65535 : 255;
+    for (let y = 0; y < h; y++) {
+      const o = y * stride; raw[o] = 0;
+      for (let x = 0; x < w; x++) {
+        const v = Math.round(Math.min(1, Math.max(0, H[y * w + x])) * max);
+        if (bits === 16) { raw[o + 1 + 2 * x] = v >> 8; raw[o + 2 + 2 * x] = v & 255; } else raw[o + 1 + x] = v;
+      }
+    }
+    const idat = await deflate(raw);
+    const chunk = (type, data) => {
+      const c = new Uint8Array(12 + data.length), dv = new DataView(c.buffer);
+      dv.setUint32(0, data.length); for (let i = 0; i < 4; i++) c[4 + i] = type.charCodeAt(i);
+      c.set(data, 8); dv.setUint32(8 + data.length, crc(c.subarray(4, 8 + data.length))); return c;
+    };
+    const ih = new Uint8Array(13), dv = new DataView(ih.buffer);
+    dv.setUint32(0, w); dv.setUint32(4, h); ih[8] = bits; ih[9] = 0; ih[10] = 0; ih[11] = 0; ih[12] = 0;
+    const parts = [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ih), chunk('IDAT', idat), chunk('IEND', new Uint8Array(0))];
+    return new Blob(parts, { type: 'image/png' });
+  }
+
+  // ---------- STL (binary) ----------
+  // H: w×h heights 0..1. o: { GX, GY (global sample grid), c0,c1,r0,r1 (grid index range, inclusive),
+  //   Wmm, Hmm (whole panel), depthMM, baseMM, box: {clear, wall, cover, floor} | null }
+  function buildSTL(H, w, h, o) {
+    const { GX, GY, c0, c1, r0, r1, Wmm, Hmm, depthMM, baseMM } = o;
+    const nx = c1 - c0 + 1, ny = r1 - r0 + 1;
+    const X = c => c / (GX - 1) * Wmm, Y = r => (GY - 1 - r) / (GY - 1) * Hmm;
+    const Z = (c, r) => {      // bilinear sample of H at grid point
+      const fx = c / (GX - 1) * (w - 1), fy = r / (GY - 1) * (h - 1);
+      const x0 = Math.floor(fx), y0 = Math.floor(fy), x1 = Math.min(w - 1, x0 + 1), y1 = Math.min(h - 1, y0 + 1), tx = fx - x0, ty = fy - y0;
+      const v = (H[y0 * w + x0] * (1 - tx) + H[y0 * w + x1] * tx) * (1 - ty) + (H[y1 * w + x0] * (1 - tx) + H[y1 * w + x1] * tx) * ty;
+      return baseMM + Math.max(0, Math.min(1, v)) * depthMM;
+    };
+    const per = 2 * (nx - 1) + 2 * (ny - 1);
+    const boxTris = o.box ? 5 * 12 : 0;
+    const nt = 2 * (nx - 1) * (ny - 1) + per /*bottom fan*/ + 2 * per /*walls*/ + boxTris;
+    const buf = new ArrayBuffer(84 + 50 * nt), dv = new DataView(buf);
+    const hdr = 'Relief Forge STL · units mm'; for (let i = 0; i < hdr.length; i++) dv.setUint8(i, hdr.charCodeAt(i));
+    dv.setUint32(80, nt, true);
+    let off = 84;
+    const tri = (a, b, cc) => {
+      const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = cc[0] - a[0], vy = cc[1] - a[1], vz = cc[2] - a[2];
+      let nX = uy * vz - uz * vy, nY = uz * vx - ux * vz, nZ = ux * vy - uy * vx; const l = Math.hypot(nX, nY, nZ) || 1;
+      dv.setFloat32(off, nX / l, true); dv.setFloat32(off + 4, nY / l, true); dv.setFloat32(off + 8, nZ / l, true);
+      dv.setFloat32(off + 12, a[0], true); dv.setFloat32(off + 16, a[1], true); dv.setFloat32(off + 20, a[2], true);
+      dv.setFloat32(off + 24, b[0], true); dv.setFloat32(off + 28, b[1], true); dv.setFloat32(off + 32, b[2], true);
+      dv.setFloat32(off + 36, cc[0], true); dv.setFloat32(off + 40, cc[1], true); dv.setFloat32(off + 44, cc[2], true);
+      dv.setUint16(off + 48, 0, true); off += 50;
+    };
+    // top surface, row by row (two rows of z cached)
+    let prev = new Float64Array(nx), cur = new Float64Array(nx);
+    for (let i = 0; i < nx; i++) prev[i] = Z(c0 + i, r0);
+    for (let r = r0 + 1; r <= r1; r++) {
+      for (let i = 0; i < nx; i++) cur[i] = Z(c0 + i, r);
+      const ya = Y(r - 1), yb = Y(r);
+      for (let i = 0; i < nx - 1; i++) {
+        const xa = X(c0 + i), xb = X(c0 + i + 1);
+        const A = [xa, ya, prev[i]], B = [xb, ya, prev[i + 1]], C = [xa, yb, cur[i]], D = [xb, yb, cur[i + 1]];
+        if (Math.abs(A[2] - D[2]) < Math.abs(B[2] - C[2])) { tri(A, C, D); tri(A, D, B); } else { tri(A, C, B); tri(B, C, D); }   // split along the edge, not across it
+      }
+      const t = prev; prev = cur; cur = t;
+    }
+    // perimeter, counter-clockwise seen from above: left edge down, bottom edge right, right edge up, top edge left
+    const P = [];
+    for (let r = r0; r < r1; r++) P.push([c0, r]);
+    for (let c = c0; c < c1; c++) P.push([c, r1]);
+    for (let r = r1; r > r0; r--) P.push([c1, r]);
+    for (let c = c1; c > c0; c--) P.push([c, r0]);
+    const cb = [(X(c0) + X(c1)) / 2, (Y(r0) + Y(r1)) / 2, 0];
+    for (let k = 0; k < P.length; k++) {
+      const p = P[k], q = P[(k + 1) % P.length];
+      const pb = [X(p[0]), Y(p[1]), 0], qb = [X(q[0]), Y(q[1]), 0], pt = [pb[0], pb[1], Z(p[0], p[1])], qt = [qb[0], qb[1], Z(q[0], q[1])];
+      tri(cb, qb, pb);                 // bottom (faces down)
+      tri(pb, qb, qt); tri(pb, qt, pt); // wall (faces out)
+    }
+    if (o.box) {   // open-top pour box: floor under everything + four walls standing on it
+      const { clear: cl, wall: wt, cover, floor: fl } = o.box, x0 = -cl - wt, x1 = Wmm + cl + wt, y0 = -cl - wt, y1 = Hmm + cl + wt, top = baseMM + depthMM + cover;
+      const cuboid = (ax, ay, az, bx, by, bz) => {
+        const v = [[ax, ay, az], [bx, ay, az], [bx, by, az], [ax, by, az], [ax, ay, bz], [bx, ay, bz], [bx, by, bz], [ax, by, bz]];
+        const f = [[0, 2, 1], [0, 3, 2], [4, 5, 6], [4, 6, 7], [0, 1, 5], [0, 5, 4], [1, 2, 6], [1, 6, 5], [2, 3, 7], [2, 7, 6], [3, 0, 4], [3, 4, 7]];
+        for (const t of f) tri(v[t[0]], v[t[1]], v[t[2]]);
+      };
+      cuboid(x0, y0, -fl, x1, y1, 0);                    // floor
+      cuboid(x0, y0, 0, x0 + wt, y1, top);               // left
+      cuboid(x1 - wt, y0, 0, x1, y1, top);               // right
+      cuboid(x0 + wt, y0, 0, x1 - wt, y0 + wt, top);     // front
+      cuboid(x0 + wt, y1 - wt, 0, x1 - wt, y1, top);     // back
+    }
+    return buf;
+  }
+  function stlTriangles(nx, ny, box) { const per = 2 * (nx - 1) + 2 * (ny - 1); return 2 * (nx - 1) * (ny - 1) + 3 * per + (box ? 60 : 0); }
+
+  // ---------- ZIP (store or pre-deflated entries) ----------
+  // entries: [{ name, data: Uint8Array (stored bytes), crc, size (uncompressed), method: 0|8 }]
+  function zipBuild(entries) {
+    const enc = new TextEncoder(), parts = [], cen = []; let off = 0, d0 = new Date();
+    const dosT = (d0.getHours() << 11) | (d0.getMinutes() << 5) | (d0.getSeconds() >> 1), dosD = ((d0.getFullYear() - 1980) << 9) | ((d0.getMonth() + 1) << 5) | d0.getDate();
+    for (const e of entries) {
+      const nm = enc.encode(e.name), lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, e.method, true); lh.setUint16(10, dosT, true); lh.setUint16(12, dosD, true);
+      lh.setUint32(14, e.crc >>> 0, true); lh.setUint32(18, e.data.length, true); lh.setUint32(22, e.size, true); lh.setUint16(26, nm.length, true);
+      parts.push(new Uint8Array(lh.buffer), nm, e.data);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, e.method, true); ch.setUint16(12, dosT, true); ch.setUint16(14, dosD, true);
+      ch.setUint32(16, e.crc >>> 0, true); ch.setUint32(20, e.data.length, true); ch.setUint32(24, e.size, true); ch.setUint16(28, nm.length, true); ch.setUint32(42, off, true);
+      cen.push(new Uint8Array(ch.buffer), nm);
+      off += 30 + nm.length + e.data.length;
+    }
+    const csz = cen.reduce((a, b) => a + b.length, 0), end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true); end.setUint32(12, csz, true); end.setUint32(16, off, true);
+    return new Blob([...parts, ...cen, new Uint8Array(end.buffer)], { type: 'application/zip' });
+  }
+  // returns [{name, method, data (raw stored bytes), size}]
+  function zipList(u8) {
+    const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength); let e = u8.length - 22;
+    while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+    if (e < 0) throw new Error('not a zip file');
+    const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true); const out = [], dec = new TextDecoder();
+    for (let k = 0; k < n; k++) {
+      const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), size = dv.getUint32(p + 24, true), nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lo = dv.getUint32(p + 42, true);
+      const name = dec.decode(u8.subarray(p + 46, p + 46 + nl));
+      const lnl = dv.getUint16(lo + 26, true), lxl = dv.getUint16(lo + 28, true), ds = lo + 30 + lnl + lxl;
+      out.push({ name, method, size, data: u8.subarray(ds, ds + csize) });
+      p += 46 + nl + xl + cl;
+    }
+    return out;
+  }
+
+  // ---------- PNG decode (8/16-bit, non-interlaced) → Float32 0..1 gray (luma) ----------
+  async function inflate(data, raw) {
+    if (typeof DecompressionStream !== 'undefined') {
+      const ds = new DecompressionStream(raw ? 'deflate-raw' : 'deflate');
+      return new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(ds)).arrayBuffer());
+    }
+    const zlib = await import('node:zlib'); return new Uint8Array(raw ? zlib.inflateRawSync(data) : zlib.inflateSync(data));
+  }
+  async function decodePNG(u8) {
+    const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+    if (dv.getUint32(0) !== 0x89504e47) return null;
+    let p = 8, w = 0, h = 0, bd = 0, ct = 0, il = 0; const idat = [];
+    while (p < u8.length) {
+      const len = dv.getUint32(p), type = String.fromCharCode(u8[p + 4], u8[p + 5], u8[p + 6], u8[p + 7]);
+      if (type === 'IHDR') { w = dv.getUint32(p + 8); h = dv.getUint32(p + 12); bd = u8[p + 16]; ct = u8[p + 17]; il = u8[p + 20]; }
+      else if (type === 'IDAT') idat.push(u8.subarray(p + 8, p + 8 + len));
+      else if (type === 'IEND') break;
+      p += 12 + len;
+    }
+    if (il || (bd !== 8 && bd !== 16) || ![0, 2, 4, 6].includes(ct)) return null;
+    const ch = { 0: 1, 2: 3, 4: 2, 6: 4 }[ct], bpp = ch * bd / 8, stride = w * bpp;
+    const tot = idat.reduce((a, b) => a + b.length, 0), cat = new Uint8Array(tot); let o = 0; for (const d of idat) { cat.set(d, o); o += d.length; }
+    const raw = await inflate(cat, false), img = new Uint8Array(stride * h);
+    for (let y = 0; y < h; y++) {
+      const f = raw[y * (stride + 1)], src = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1)), row = img.subarray(y * stride, (y + 1) * stride), up = y ? img.subarray((y - 1) * stride, y * stride) : null;
+      for (let i = 0; i < stride; i++) {
+        const a = i >= bpp ? row[i - bpp] : 0, b = up ? up[i] : 0, cc = up && i >= bpp ? up[i - bpp] : 0;
+        let v = src[i];
+        if (f === 1) v += a; else if (f === 2) v += b; else if (f === 3) v += (a + b) >> 1;
+        else if (f === 4) { const pp = a + b - cc, pa = Math.abs(pp - a), pb = Math.abs(pp - b), pc = Math.abs(pp - cc); v += pa <= pb && pa <= pc ? a : pb <= pc ? b : cc; }
+        row[i] = v & 255;
+      }
+    }
+    const out = new Float32Array(w * h), mx = bd === 16 ? 65535 : 255, rd = bd === 16 ? (i => (img[i] << 8) | img[i + 1]) : (i => img[i]), sb = bd / 8;
+    for (let i = 0; i < w * h; i++) {
+      const b0 = i * bpp;
+      if (ch <= 2) out[i] = rd(b0) / mx;
+      else out[i] = (0.2126 * rd(b0) + 0.7152 * rd(b0 + sb) + 0.0722 * rd(b0 + 2 * sb)) / mx;
+    }
+    return { w, h, bits: bd, data: out };
+  }
+  function resample(src, sw, sh, dw, dh) {   // bilinear
+    if (sw === dw && sh === dh) return Float32Array.from(src);
+    const o = new Float32Array(dw * dh);
+    for (let y = 0; y < dh; y++) { const fy = Math.min(sh - 1, Math.max(0, (y + 0.5) * sh / dh - 0.5)), y0 = Math.floor(fy), y1 = Math.min(sh - 1, y0 + 1), ty = fy - y0;
+      for (let x = 0; x < dw; x++) { const fx = Math.min(sw - 1, Math.max(0, (x + 0.5) * sw / dw - 0.5)), x0 = Math.floor(fx), x1 = Math.min(sw - 1, x0 + 1), tx = fx - x0;
+        o[y * dw + x] = (src[y0 * sw + x0] * (1 - tx) + src[y0 * sw + x1] * tx) * (1 - ty) + (src[y1 * sw + x0] * (1 - tx) + src[y1 * sw + x1] * tx) * ty; } }
+    return o;
+  }
+  // integrate a normal map into a height field (optionally on a mask, anchored per piece to a reference depth)
+  // weighted=true: steep, near edge-on normals (unreliable, clamped) get little say in the solve, so their mismatch is
+  // absorbed by the steep walls themselves instead of spreading into the surrounding flat as a moat / halo
+  function integrateNormals(nx, ny, nz, W, H, cap, M, ref, weighted) {
+    const N = W * H, p = new Float32Array(N), q = new Float32Array(N);
+    for (let i = 0; i < N; i++) { const z = Math.max(1e-3, nz[i]); p[i] = Math.max(-cap, Math.min(cap, -nx[i] / z)); q[i] = Math.max(-cap, Math.min(cap, -ny[i] / z)); }
+    const gx = new Float32Array(N), gy = new Float32Array(N);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x;
+      if (x < W - 1) gx[i] = 0.5 * (p[i] + p[i + 1]); if (y < H - 1) gy[i] = 0.5 * (q[i] + q[i + W]); }
+    if (weighted) {
+      const c = new Float32Array(N);
+      for (let i = 0; i < N; i++) { const t = Math.min(1, Math.max(0, (nz[i] - 0.25) / 0.45)); c[i] = 0.02 + 0.98 * t * t * (3 - 2 * t); }
+      const Ex = new Float32Array(N), Ey = new Float32Array(N);
+      for (let i = 0; i < N; i++) { if (M && !M[i]) continue;
+        if (i % W < W - 1 && (!M || M[i + 1])) Ex[i] = Math.min(c[i], c[i + 1]); if (i + W < N && (!M || M[i + W])) Ey[i] = Math.min(c[i], c[i + W]); }
+      const Hw = mgSolve(gx, gy, Ex, Ey, W, H, 400);
+      if (!M) return Hw;
+      return anchorPieces(Hw, M, ref, W, H);
+    }
+    if (!M) return poisson(gx, gy, W, H);
+    return anchorPieces(poissonMasked(gx, gy, M, W, H, 80), M, ref, W, H);
+  }
+  function anchorPieces(Hh, M, ref, W, H) {
+    const N = W * H;
+    const D = normalize(ref, 0.5, 99.5, M), lab = labels(M, W, H), sh = new Map(), sd = new Map(), c = new Map();
+    let a = Infinity, b = -Infinity; for (let i = 0; i < N; i++) if (M[i]) { a = Math.min(a, Hh[i]); b = Math.max(b, Hh[i]); }
+    const zr = Math.max(1e-6, b - a);
+    for (let i = 0; i < N; i++) { const l = lab[i]; if (!l) continue; sh.set(l, (sh.get(l) || 0) + Hh[i]); sd.set(l, (sd.get(l) || 0) + D[i] * zr); c.set(l, (c.get(l) || 0) + 1); }
+    for (let i = 0; i < N; i++) { const l = lab[i]; Hh[i] = l ? Hh[i] + (sd.get(l) - sh.get(l)) / c.get(l) : 0; }
+    return Hh;
+  }
+  // does the normal map agree with the depth map? returns correlations of x/y slopes (negative = that axis is flipped)
+  function normalsVsDepth(nx, ny, nz, depth, W, H, M) {
+    const k = Math.max(1, Math.round(Math.max(W, H) / 320)), w = Math.floor(W / k), h = Math.floor(H / k);
+    const dn = normalize(depth, 1, 99, M), sd = new Float32Array(w * h), px = new Float32Array(w * h), py = new Float32Array(w * h), mk = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s = 0, a = 0, b = 0, m = 0;
+      for (let j = 0; j < k; j++) for (let i = 0; i < k; i++) { const t = (y * k + j) * W + x * k + i, z = Math.max(0.05, nz[t]); s += dn[t]; a += -nx[t] / z; b += -ny[t] / z; m += M ? M[t] : 1; }
+      const o = y * w + x; sd[o] = s / (k * k); px[o] = a / (k * k); py[o] = b / (k * k); mk[o] = m > 0.5 * k * k ? 1 : 0; }
+    const D = blur(sd, w, h, 1.2), Px = blur(px, w, h, 1.2), Py = blur(py, w, h, 1.2);
+    let sxx = 0, sxa = 0, saa = 0, syy = 0, syb = 0, sbb = 0;
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const i = y * w + x; if (!mk[i] || !mk[i - 1] || !mk[i + 1] || !mk[i - w] || !mk[i + w]) continue;
+      const gx = (D[i + 1] - D[i - 1]) * 0.5, gy = (D[i + w] - D[i - w]) * 0.5;
+      sxx += gx * gx; sxa += gx * Px[i]; saa += Px[i] * Px[i]; syy += gy * gy; syb += gy * Py[i]; sbb += Py[i] * Py[i]; }
+    return { cx: sxa / Math.sqrt(sxx * saa + 1e-30), cy: syb / Math.sqrt(syy * sbb + 1e-30) };
+  }
+
+  return { fieldFloor, floorFill, edt, buildSTL, stlTriangles, zipBuild, zipList, inflate, decodePNG, resample, integrateNormals, normalsVsDepth, crc32: crc, blur, grad, poisson, poissonMasked, maskedBlur, otsu, buildMask, labels, distInside, makeDCT, normalize, percentile, compose, tileGrid, featherW, samplePlanes, sampleBack, accumulateTile, accumulateNormalTile, renormNormals, hillshade, toHalf, fromHalf, encodePNG };
+})();
+if (typeof module !== 'undefined') module.exports = Core;
+
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const $ = id => document.getElementById(id);
+const tick = () => new Promise(r => setTimeout(r, 0));
+const S = { field: null, fw: 0, fh: 0, name: 'relief', bits: 0 };
+
+// ---------- presets ----------
+const D0 = { grain: 0, metal: 0, coat: 0, gloss: 0.6, sheen: 0, sheenR: 0.5, env: 0.6, patina: 0, patCol: '#2a2018', trans: 0, layer: 0 };
+const MATG = {
+  'Wood': {
+    'Light oak':      { color: '#c9a172', grain: 1, gc: '#8a6038', rough: 0.72 },
+    'Oak, satin oil': { color: '#c39364', grain: 1, gc: '#7f5530', rough: 0.55, coat: 0.4, sheen: 0.12 },
+    'Maple':          { color: '#e2c79a', grain: 1, gc: '#b48a55', rough: 0.65 },
+    'Cherry':         { color: '#9a5634', grain: 1, gc: '#5e2d17', rough: 0.55, coat: 0.3, sheen: 0.1 },
+    'Sapele':         { color: '#7a3b26', grain: 2, gc: '#4b1f12', rough: 0.5, coat: 0.35, sheen: 0.1 },
+    'Walnut':         { color: '#6e4b31', grain: 2, gc: '#2f1d12', rough: 0.6 },
+    'Walnut, satin':  { color: '#5e3e27', grain: 2, gc: '#24150c', rough: 0.5, coat: 0.4, sheen: 0.12, sheenR: 0.45, env: 0.55 },
+    'Ebony':          { color: '#2a2420', grain: 1, gc: '#100d0b', rough: 0.4, coat: 0.5, gloss: 0.75, env: 0.8 },
+    'Painted MDF':    { color: '#d9d4cb', rough: 0.85, env: 0.4 },
+  },
+  'Casting': {
+    'Clay':           { color: '#d6cdbf', rough: 0.9, env: 0.5 },
+    'Plaster':        { color: '#eeeae2', rough: 0.96, env: 0.45 },
+    'Jesmonite':      { color: '#e6dfcf', grain: 3, gc: '#cfc6b2', rough: 0.88, env: 0.45 },
+    'Concrete':       { color: '#9d9b96', grain: 3, gc: '#77756f', rough: 0.97, env: 0.35, patina: 0.25, patCol: '#55524c' },
+    'Ivory resin':    { color: '#efe6d2', rough: 0.38, coat: 0.5, gloss: 0.7, sheen: 0.25, sheenR: 0.4, env: 0.8 },
+    'Black resin':    { color: '#1d1c1b', rough: 0.32, coat: 0.8, gloss: 0.9, env: 1 },
+    'Clear resin':    { color: '#eef3f5', rough: 0.08, coat: 0.6, gloss: 0.95, env: 1.1, trans: 0.55 },
+    'Amber resin':    { color: '#e09a3c', rough: 0.08, coat: 0.6, gloss: 0.95, env: 1.1, trans: 0.5 },
+  },
+  'Metal': {
+    'Brass':          { color: '#d8b36a', rough: 0.3, metal: 1, env: 1.1 },
+    'Bronze':         { color: '#8c5a32', rough: 0.45, metal: 1, env: 1 },
+    'Aged bronze':    { color: '#9a6b3c', rough: 0.42, metal: 1, env: 1, patina: 0.85, patCol: '#16241b' },
+    'Copper':         { color: '#c9774a', rough: 0.32, metal: 1, env: 1.1 },
+    'Antique copper': { color: '#c47a4c', rough: 0.35, metal: 1, env: 1.05, patina: 0.75, patCol: '#2a140b' },
+    'Rose gold':      { color: '#e2a48a', rough: 0.22, metal: 1, env: 1.1 },
+    'Gold':           { color: '#e8c060', rough: 0.2, metal: 1, env: 1.1 },
+    'Silver':         { color: '#e6e6e8', rough: 0.18, metal: 1, env: 1.1 },
+    'Antique silver': { color: '#dcdcde', rough: 0.25, metal: 1, env: 1.1, patina: 0.7, patCol: '#1c1c1f' },
+    'Pewter':         { color: '#9a9c9e', rough: 0.45, metal: 1, env: 1, patina: 0.4, patCol: '#3a3c3e' },
+    'Gunmetal':       { color: '#4d5257', rough: 0.35, metal: 1, env: 1.05 },
+    'Blackened steel':{ color: '#2b2c2e', rough: 0.5, metal: 0.85, env: 1, patina: 0.3, patCol: '#0c0c0d' },
+    'Steel':          { color: '#c3c7cc', rough: 0.32, metal: 0.9, env: 1.1 },
+  },
+  'Stone': {
+    'White marble':   { color: '#ece9e4', rough: 0.28, coat: 0.35, gloss: 0.85, env: 0.8 },
+    'Slate':          { color: '#3d4146', grain: 3, gc: '#2c2f33', rough: 0.75, env: 0.5 },
+    'Sandstone':      { color: '#c9a97c', grain: 3, gc: '#a8885d', rough: 0.95, env: 0.35, patina: 0.2, patCol: '#6d5537' },
+  },
+  '3D print': {
+    'Grey resin print': { color: '#8f9296', rough: 0.55, env: 0.6 },
+    'PLA (0.2 mm layers)': { color: '#d8d4cc', rough: 0.6, env: 0.5, layer: 0.2 },
+    'PLA (0.1 mm layers)': { color: '#d8d4cc', rough: 0.6, env: 0.5, layer: 0.1 },
+  },
+  'Other': {
+    'Tan leather':    { color: '#9a6237', grain: 4, gc: '#6e4022', rough: 0.8, sheen: 0.5, sheenR: 0.6, env: 0.4, patina: 0.45, patCol: '#3a2010' },
+    'Sealing wax':    { color: '#a3241f', rough: 0.35, coat: 0.2, sheen: 0.3, env: 0.7, patina: 0.25, patCol: '#4a0e0b' },
+    'Dark chocolate': { color: '#4a2a1a', rough: 0.45, sheen: 0.2, env: 0.6 },
+  },
+};
+const MATS = {}; for (const g in MATG) for (const k in MATG[g]) MATS[k] = { ...D0, ...MATG[g][k] };
+const LITS = {
+  'Studio':        { az: 135, el: 38, key: 2.6, warm: 0.25, fill: 0.25, exp: 1.05 },
+  'Raking light':  { az: 160, el: 12, key: 3.4, warm: 0.3, fill: 0.08, exp: 1.1 },
+  'Gallery':       { az: 105, el: 55, key: 2.8, warm: 0.15, fill: 0.3, exp: 1.0 },
+  'Overhead flat': { az: 90, el: 85, key: 2.2, warm: 0, fill: 0.5, exp: 1.0 },
+  'Dramatic':      { az: 205, el: 20, key: 4.2, warm: 0.45, fill: 0, exp: 0.95 },
+  'Cool daylight': { az: 120, el: 45, key: 2.4, warm: -0.4, fill: 0.4, exp: 1.05 },
+};
+for (const g in MATG) { const og = document.createElement('optgroup'); og.label = g; for (const k in MATG[g]) og.appendChild(new Option(k, k)); $('matPreset').appendChild(og); }
+$('matPreset').add(new Option('Custom', 'Custom'));
+for (const k in LITS) $('litPreset').add(new Option(k, k));
+$('litPreset').add(new Option('Custom', 'Custom'));
+
+// ---------- renderer ----------
+const el = $('view3d');
+const ren = new THREE.WebGLRenderer({ antialias: true });
+ren.setPixelRatio(Math.min(2, devicePixelRatio || 1)); ren.outputColorSpace = THREE.SRGBColorSpace;
+ren.toneMapping = THREE.ACESFilmicToneMapping; ren.shadowMap.enabled = true; ren.shadowMap.type = THREE.PCFSoftShadowMap;
+el.appendChild(ren.domElement);
+const MAXTEX = ren.capabilities.maxTextureSize;
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#12100e');
+const pm = new THREE.PMREMGenerator(ren); scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+const cam = new THREE.PerspectiveCamera(28, 1, 1, 50000); cam.up.set(0, 0, 1);
+const ctl = new OrbitControls(cam, ren.domElement); ctl.enableDamping = true; ctl.dampingFactor = 0.12; ctl.screenSpacePanning = true;
+const key = new THREE.DirectionalLight(0xffffff, 2.6); key.castShadow = true;
+key.shadow.mapSize.set(Math.min(4096, MAXTEX), Math.min(4096, MAXTEX)); key.shadow.bias = -0.0002; key.shadow.normalBias = 0.6;
+scene.add(key, key.target);
+const fill = new THREE.DirectionalLight(0xc8d8ff, 0.25); scene.add(fill);
+const root = new THREE.Group(); scene.add(root);
+let dirty = true; ctl.addEventListener('change', () => { dirty = true; });
+function resize() { const w = el.clientWidth, h = el.clientHeight; if (!w || !h) return; ren.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); dirty = true; }
+new ResizeObserver(resize).observe(el); resize();
+let t0 = performance.now();
+(function loop(t) {
+  requestAnimationFrame(loop); ctl.update();
+  if ($('sway').checked && T.relief) { root.rotation.z = Math.sin((t - t0) / 2600) * 0.38; dirty = true; }
+  if (dirty) { dirty = false; ren.render(scene, cam); }
+})(t0);
+
+// ---------- materials ----------
+function grainTex(base, dark, kind) {
+  const c = document.createElement('canvas'); c.width = c.height = 1024; const x = c.getContext('2d');
+  x.fillStyle = base; x.fillRect(0, 0, 1024, 1024);
+  if (kind >= 3) {   // 3 = stone speckle, 4 = leather pebble
+    let r = kind === 3 ? 5 : 13; const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647; x.fillStyle = dark;
+    const n = kind === 3 ? 26000 : 9000;
+    for (let i = 0; i < n; i++) { x.globalAlpha = kind === 3 ? 0.08 + rnd() * 0.35 : 0.05 + rnd() * 0.12; const s = kind === 3 ? 0.6 + rnd() * 2.2 : 3 + rnd() * 7;
+      x.beginPath(); x.arc(rnd() * 1024, rnd() * 1024, s, 0, 6.283); x.fill(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = ren.capabilities.getMaxAnisotropy(); return t;
+  }
+  const bold = kind === 2;
+  let r = bold ? 11 : 7; const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 260; i++) {
+    const y0 = rnd() * 1024, amp = 4 + rnd() * 14, f = 0.002 + rnd() * 0.006, ph = rnd() * 6.28;
+    x.strokeStyle = dark; x.globalAlpha = (0.05 + rnd() * 0.22) * (bold ? 1.2 : 0.8); x.lineWidth = 0.6 + rnd() * 2.6; x.beginPath();
+    for (let px = 0; px <= 1024; px += 8) { const py = y0 + Math.sin(px * f + ph) * amp + Math.sin(px * f * 3.1 + ph) * amp * 0.25; px ? x.lineTo(px, py) : x.moveTo(px, py); }
+    x.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = ren.capabilities.getMaxAnisotropy(); return t;
+}
+const matTop = new THREE.MeshPhysicalMaterial({ normalMapType: THREE.ObjectSpaceNormalMap });
+const matTopB = new THREE.MeshPhysicalMaterial({ normalMapType: THREE.ObjectSpaceNormalMap });
+// on steep faces (walls) the height-map detail is meaningless: fade it out there and use the mesh's smooth normal
+// patina: darker recesses / polished highs from a cavity map; print layers: banding at fixed heights (world z, mm)
+const blankTex = new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1); blankTex.needsUpdate = true;
+function steepFade(m) {
+  m.userData.u = { uCav: { value: blankTex }, uPatina: { value: 0 }, uPatCol: { value: new THREE.Color('#2a2018') }, uLayer: { value: 0 } };
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, m.userData.u);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vUpZ; varying vec2 vCavUv; varying float vWz;')
+      .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\nvUpZ = normalize(objectNormal).z;')
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvCavUv = uv;')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWz = (modelMatrix * vec4(transformed, 1.0)).z;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vUpZ; varying vec2 vCavUv; varying float vWz;\nuniform sampler2D uCav; uniform float uPatina; uniform vec3 uPatCol; uniform float uLayer;')
+      .replace('#include <normal_fragment_maps>', 'vec3 geoN = normal;\n#include <normal_fragment_maps>\nnormal = normalize(mix(geoN, normal, smoothstep(0.18, 0.45, vUpZ)));')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        float cvv = texture2D(uCav, vCavUv).r, lowC = clamp((0.5 - cvv) * 2.0, 0.0, 1.0), highC = clamp((cvv - 0.5) * 2.0, 0.0, 1.0);
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * uPatCol * 2.2, uPatina * smoothstep(0.0, 0.7, lowC));
+        diffuseColor.rgb = mix(diffuseColor.rgb, min(diffuseColor.rgb * 1.18, vec3(1.0)), uPatina * 0.6 * highC);
+        float lyr = 0.0; if (uLayer > 0.0) { float f = fract(vWz / uLayer); lyr = smoothstep(0.0, 0.18, f) * (1.0 - smoothstep(0.82, 1.0, f)); diffuseColor.rgb *= mix(0.86, 1.0, lyr); }`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        roughnessFactor = mix(roughnessFactor, roughnessFactor * 0.5, uPatina * highC);
+        roughnessFactor = mix(roughnessFactor, min(1.0, roughnessFactor + 0.35), uPatina * lowC);
+        if (uLayer > 0.0) roughnessFactor = mix(min(1.0, roughnessFactor + 0.25), roughnessFactor, lyr);`);
+  };
+  m.customProgramCacheKey = () => 'reliefFx';
+}
+// cavity map: height relative to the local surroundings (0 = recess, 0.5 = level, 1 = high point)
+function buildCavityTex(F, w, h) {
+  const k = Math.min(1, Math.min(2048, MAXTEX) / Math.max(w, h)), tw = Math.max(2, Math.round(w * k)), th = Math.max(2, Math.round(h * k));
+  const H = areaResample(F, w, h, tw, th), L = Math.max(tw, th), b1 = Core.blur(H, tw, th, Math.max(2, L * 0.012)), b2 = Core.blur(H, tw, th, Math.max(1, L * 0.003));
+  const D = new Float32Array(tw * th); for (let i = 0; i < D.length; i++) D[i] = 0.75 * (H[i] - b1[i]) + 0.25 * (H[i] - b2[i]) * 2;
+  const smp = []; for (let i = 0; i < D.length; i += 13) smp.push(Math.abs(D[i])); smp.sort((a, b) => a - b); const sc = (smp[Math.floor(smp.length * 0.8)] || 1e-6) * 1.5;
+  const d = new Uint8Array(tw * th * 4);
+  for (let r = 0; r < th; r++) { const y = th - 1 - r; for (let x = 0; x < tw; x++) { const q = Math.max(-1, Math.min(1, D[y * tw + x] / sc)), v = Math.round(255 * (0.5 + 0.5 * Math.sign(q) * Math.pow(Math.abs(q), 0.6))), o = (r * tw + x) * 4; d[o] = d[o + 1] = d[o + 2] = v; d[o + 3] = 255; } }
+  const t = new THREE.DataTexture(d, tw, th, THREE.RGBAFormat); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.needsUpdate = true; return t;
+}
+steepFade(matTop); steepFade(matTopB);
+const matSide = new THREE.MeshPhysicalMaterial(); steepFade(matSide);
+let grainCache = {}, grainColour = '#8a6038';
+const shade = (hex, f) => { const c = new THREE.Color(hex); c.multiplyScalar(f); return '#' + c.getHexString(); };
+function applyMaterial() {
+  const g = +$('mGrain').value, col = $('mColor').value;
+  let map = null;
+  if (g) { const k = col + grainColour + g; map = grainCache[k] || (grainCache = {}, grainCache[k] = grainTex(col, grainColour, g)); }
+  for (const m of [matTop, matTopB, matSide]) {
+    m.color.set(g ? '#ffffff' : col); m.map = map;
+    m.roughness = +$('mRough').value; m.metalness = +$('mMetal').value;
+    m.clearcoat = +$('mCoat').value; m.clearcoatRoughness = 1 - +$('mCoatGloss').value;
+    m.sheen = +$('mSheen').value; m.sheenRoughness = Math.max(0.05, +$('mSheenRough').value); m.sheenColor.set(col).lerp(new THREE.Color('#ffffff'), 0.35);   // sheen tinted by the base colour, so dark woods stay dark
+    m.envMapIntensity = +$('mEnv').value;
+    const tr = +$('mTrans').value; m.transmission = tr; m.thickness = tr ? 3 : 0; m.ior = 1.5; m.attenuationColor.set(col); m.attenuationDistance = tr ? 6 : Infinity;
+    const u = m.userData.u; u.uPatina.value = m === matSide ? +$('mPatina').value * 0.5 : +$('mPatina').value; u.uPatCol.value.set($('mPatCol').value); u.uLayer.value = +$('mLayer').value;
+    m.needsUpdate = true;
+  }
+  setUV(); dirty = true;
+}
+function setMatPreset(name) {
+  const p = MATS[name]; if (!p) return;
+  $('mColor').value = p.color; $('mGrain').value = p.grain; grainColour = p.gc || shade(p.color, 0.55);
+  $('mRough').value = p.rough; $('mMetal').value = p.metal; $('mCoat').value = p.coat; $('mCoatGloss').value = p.gloss;
+  $('mSheen').value = p.sheen; $('mSheenRough').value = p.sheenR; $('mEnv').value = p.env;
+  $('mPatina').value = p.patina; $('mPatCol').value = p.patCol; $('mTrans').value = p.trans; $('mLayer').value = String(p.layer || 0);
+  refreshVals(); applyMaterial();
+}
+
+// ---------- lights ----------
+function applyLight() {
+  const az = +$('lAz').value * Math.PI / 180, elv = +$('lEl').value * Math.PI / 180, d = Math.max(T.Wt || 300, T.Ht || 300) * 1.6;
+  key.position.set(Math.cos(az) * Math.cos(elv) * d, Math.sin(az) * Math.cos(elv) * d, Math.sin(elv) * d);
+  key.target.position.set(0, 0, 0);
+  const w = +$('lWarm').value, c = new THREE.Color(1, 1, 1);
+  c.lerp(w >= 0 ? new THREE.Color('#ffcf9a') : new THREE.Color('#bcd4ff'), Math.abs(w)); key.color.copy(c);
+  key.intensity = +$('lKey').value; fill.intensity = +$('lFill').value;
+  fill.position.set(-key.position.x, -key.position.y, d * 0.5);
+  ren.toneMappingExposure = +$('lExp').value;
+  key.castShadow = $('lShadow').checked;
+  const r = Math.hypot(T.Wt || 300, T.Ht || 300) * 0.6, sc = key.shadow.camera;
+  sc.left = -r; sc.right = r; sc.top = r; sc.bottom = -r; sc.near = d * 0.2; sc.far = d * 2.2; sc.updateProjectionMatrix();
+  key.shadow.normalBias = (T.Wt || 300) / (T.gx || 1024) * 0.8;
+  scene.background.set($('bgCol').value); dirty = true;
+}
+function setLitPreset(name) {
+  const p = LITS[name]; if (!p) return;
+  $('lAz').value = p.az; $('lEl').value = p.el; $('lKey').value = p.key; $('lWarm').value = p.warm; $('lFill').value = p.fill; $('lExp').value = p.exp;
+  refreshVals(); applyLight();
+}
+
+// ---------- slider readouts ----------
+const FMT = { floorCut: v => (v * 100).toFixed(1) + '%', lAz: v => v + '°', lEl: v => v + '°', dmmR: v => (+v).toFixed(1) + ' mm' };
+function refreshVals() {
+  for (const r of document.querySelectorAll('label.f input[type=range]')) {
+    const v = r.parentElement.querySelector('.v'); if (v) v.textContent = FMT[r.id] ? FMT[r.id](r.value) : (+r.value).toFixed(2);
+  }
+}
+
+// ---------- geometry ----------
+const T = {};   // model A (and scene sizes): relief/skirt/slab meshes, sizes
+const TB = {};  // model B (compare)
+const SB = { field: null };
+const gA = new THREE.Group(), gB = new THREE.Group(); root.add(gA, gB);
+// area-average resample (no aliasing when shrinking)
+function areaResample(src, sw, sh, dw, dh) {
+  if (sw === dw && sh === dh) return src;
+  if (dw > sw || dh > sh) return Core.resample(src, sw, sh, dw, dh);
+  const tmp = new Float32Array(dw * sh), out = new Float32Array(dw * dh);
+  const pass = (get, n, m, lines, set) => {   // reduce length n → m along a line
+    const k = n / m;
+    for (let L = 0; L < lines; L++) for (let j = 0; j < m; j++) {
+      const a = j * k, b = a + k; let s = 0, i = Math.floor(a);
+      for (; i < b && i < n; i++) { const w = Math.min(i + 1, b) - Math.max(i, a); s += get(L, i) * w; }
+      set(L, j, s / k);
+    }
+  };
+  pass((y, x) => src[y * sw + x], sw, dw, sh, (y, x, v) => { tmp[y * dw + x] = v; });
+  pass((x, y) => tmp[y * dw + x], sh, dh, dw, (x, y, v) => { out[y * dw + x] = v; });
+  return out;
+}
+function heightAt(F, w, h, fx, fy) {
+  const x0 = Math.floor(fx), y0 = Math.floor(fy), x1 = Math.min(w - 1, x0 + 1), y1 = Math.min(h - 1, y0 + 1), tx = fx - x0, ty = fy - y0;
+  return (F[y0 * w + x0] * (1 - tx) + F[y0 * w + x1] * tx) * (1 - ty) + (F[y1 * w + x0] * (1 - tx) + F[y1 * w + x1] * tx) * ty;
+}
+// object space: x ∈ [-0.5, 0.5], y ∈ [-A/2, A/2] (A = h/w), z = height 0..1; scaled to mm by the group
+function buildMesh(F, w, h, gx, gy, m = T) {
+  const A = h / w, n = gx * gy, pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2);
+  const G = quantised(areaResample(F, w, h, gx, gy)), sx = 1 / (gx - 1), sy = A / (gy - 1);   // re-snap after downsampling: crisp risers
+  for (let j = 0; j < gy; j++) for (let i = 0; i < gx; i++) {
+    const k = j * gx + i, z = G[k];
+    pos[k * 3] = i * sx - 0.5; pos[k * 3 + 1] = A / 2 - j * sy; pos[k * 3 + 2] = z;
+    uv[k * 2] = i / (gx - 1); uv[k * 2 + 1] = 1 - j / (gy - 1);
+  }
+  m.G = G;
+  const idx = new Uint32Array((gx - 1) * (gy - 1) * 6); let o = 0;
+  const cut = $('hideFloor').checked ? +$('floorCut').value : -1, fl = k => G[k] <= cut;
+  for (let j = 0; j < gy - 1; j++) for (let i = 0; i < gx - 1; i++) {
+    const a = j * gx + i, b = a + 1, c = a + gx, d = c + 1;
+    // split each cell along the edge rather than across it (removes saw-teeth on sheer walls); skip triangles lying on the floor
+    if (Math.abs(G[a] - G[d]) < Math.abs(G[b] - G[c])) {
+      if (!(fl(a) && fl(c) && fl(d))) { idx[o++] = a; idx[o++] = c; idx[o++] = d; }
+      if (!(fl(a) && fl(d) && fl(b))) { idx[o++] = a; idx[o++] = d; idx[o++] = b; }
+    } else {
+      if (!(fl(a) && fl(c) && fl(b))) { idx[o++] = a; idx[o++] = c; idx[o++] = b; }
+      if (!(fl(b) && fl(c) && fl(d))) { idx[o++] = b; idx[o++] = c; idx[o++] = d; }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setIndex(new THREE.BufferAttribute(idx.subarray(0, o), 1));
+  return g;
+}
+// vertex normals depend on the depth/width ratio → recomputed when depth changes (cheap)
+function updateVertexNormals(m = T) {
+  if (!m.relief) return;
+  const { gx, gy } = m, G = m.G, nor = m.relief.geometry.attributes.normal.array;
+  const W = T.Wmm, Hm = W * m.fh / m.fw, D = T.Dmm, sx = W / (gx - 1), sy = Hm / (gy - 1);
+  for (let j = 0; j < gy; j++) for (let i = 0; i < gx; i++) {
+    const k = j * gx + i, l = G[j * gx + Math.max(0, i - 1)], r = G[j * gx + Math.min(gx - 1, i + 1)], u = G[Math.max(0, j - 1) * gx + i], dn = G[Math.min(gy - 1, j + 1) * gx + i];
+    const dx = (r - l) * D / (sx * ((i > 0) + (i < gx - 1))), dy = (u - dn) * D / (sy * ((j > 0) + (j < gy - 1)));
+    // world normal (-dx, -dy, 1) → object normal = scale ⊙ world (inverse-transpose of the mm scale), normalised
+    let nx = -dx * W, ny = -dy * W, nz = D; const L = Math.hypot(nx, ny, nz) || 1;
+    nor[k * 3] = nx / L; nor[k * 3 + 1] = ny / L; nor[k * 3 + 2] = nz / L;
+  }
+  m.relief.geometry.attributes.normal.needsUpdate = true;
+}
+// object-space normal map at (up to) full source resolution, half-float so smooth slopes don't band
+function buildNormalMap(F, w, h, tw, th) {
+  const H = areaResample(F, w, h, tw, th), A = h / w, sx = 1 / (tw - 1), sy = A / (th - 1);
+  const data = new Uint16Array(tw * th * 4), half = THREE.DataUtils.toHalfFloat, one = half(1);
+  for (let r = 0; r < th; r++) {
+    const y = th - 1 - r;   // texture row 0 = bottom of the board
+    for (let x = 0; x < tw; x++) {
+      const l = H[y * tw + Math.max(0, x - 1)], rr = H[y * tw + Math.min(tw - 1, x + 1)], up = H[Math.max(0, y - 1) * tw + x], dn = H[Math.min(th - 1, y + 1) * tw + x];
+      const gxv = (rr - l) / (sx * ((x > 0) + (x < tw - 1))), gyv = (up - dn) / (sy * ((y > 0) + (y < th - 1)));
+      let nx = -gxv, ny = -gyv, nz = 1; const L = Math.hypot(nx, ny, nz); nx /= L; ny /= L; nz /= L;
+      const o = (r * tw + x) * 4; data[o] = half(nx * 0.5 + 0.5); data[o + 1] = half(ny * 0.5 + 0.5); data[o + 2] = half(nz * 0.5 + 0.5); data[o + 3] = one;
+    }
+  }
+  const t = new THREE.DataTexture(data, tw, th, THREE.RGBAFormat, THREE.HalfFloatType);
+  t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true;
+  t.anisotropy = ren.capabilities.getMaxAnisotropy(); t.needsUpdate = true; return t;
+}
+function buildHeightTex(F, w, h) {
+  const k = Math.min(1, Math.min(2048, MAXTEX) / Math.max(w, h)), tw = Math.max(2, Math.round(w * k)), th = Math.max(2, Math.round(h * k));
+  const H = areaResample(F, w, h, tw, th), d = new Uint8Array(tw * th * 4);
+  for (let r = 0; r < th; r++) { const y = th - 1 - r; for (let x = 0; x < tw; x++) { const v = Math.max(0, Math.min(255, Math.round(H[y * tw + x] * 255))), o = (r * tw + x) * 4; d[o] = d[o + 1] = d[o + 2] = v; d[o + 3] = 255; } }
+  const t = new THREE.DataTexture(d, tw, th, THREE.RGBAFormat); t.colorSpace = THREE.SRGBColorSpace;
+  t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.needsUpdate = true; return t;
+}
+// walls from the relief's outline down to the base top (closes the edges when they aren't at zero)
+function buildSkirt(G, gx, gy, A) {
+  const P = [];
+  for (let i = 0; i < gx; i++) P.push([i, 0]);
+  for (let j = 1; j < gy; j++) P.push([gx - 1, j]);
+  for (let i = gx - 2; i >= 0; i--) P.push([i, gy - 1]);
+  for (let j = gy - 2; j > 0; j--) P.push([0, j]);
+  P.push(P[0]);
+  const pos = [], idx = [], nor = [];
+  const X = i => i / (gx - 1) - 0.5, Y = j => A / 2 - j / (gy - 1) * A;
+  for (let k = 0; k < P.length; k++) {
+    const [i, j] = P[k], x = X(i), y = Y(j), z = G[j * gx + i];
+    const nx = i === 0 ? -1 : i === gx - 1 ? 1 : 0, ny = j === 0 ? 1 : j === gy - 1 ? -1 : 0;
+    pos.push(x, y, z, x, y, 0); nor.push(nx, ny, 0, nx, ny, 0);
+    if (k) { const a = (k - 1) * 2, b = k * 2; idx.push(a, a + 1, b, b, a + 1, b + 1); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setIndex(idx);
+  return g;
+}
+function dispose(m) { if (!m) return; m.removeFromParent(); m.geometry.dispose(); }
+
+function currentField(src = S) {
+  if (!src.field) return null;
+  if (!$('invert').checked) return src.field;
+  if (!src.inv) { src.inv = new Float32Array(src.field.length); for (let i = 0; i < src.field.length; i++) src.inv[i] = 1 - src.field[i]; }
+  return src.inv;
+}
+// builds one model (A or B) into its holder group
+function quantised(F) {   // heights snapped down to whole print layers (relative to the relief's depth in mm)
+  const L = +$('mLayer').value, D = Math.max(0.05, +$('dmm').value || 8);
+  if (!$('mQuant').checked || !(L > 0)) return F;
+  const n = D / L, o = new Float32Array(F.length);
+  for (let i = 0; i < F.length; i++) o[i] = Math.floor(F[i] * n + 1e-6) / n;
+  return o;
+}
+function buildModel(src, m, holder, mat) {
+  const F = quantised(currentField(src)), w = src.fw, h = src.fh, M = +$('meshRes').value, k = Math.min(1, M / Math.max(w, h));
+  const gx = Math.max(2, Math.round(w * k)), gy = Math.max(2, Math.round(h * k));
+  dispose(m.relief); dispose(m.skirt); m.relief = m.skirt = null;
+  Object.assign(m, { gx, gy, fw: w, fh: h, mat });
+  m.relief = new THREE.Mesh(buildMesh(F, w, h, gx, gy, m), mat); m.relief.castShadow = m.relief.receiveShadow = true;
+  m.skirt = new THREE.Mesh(buildSkirt(m.G, gx, gy, h / w), matSide); m.skirt.castShadow = m.skirt.receiveShadow = true; m.skirt.visible = !$('hideFloor').checked;
+  m.reliefGroup = m.reliefGroup || new THREE.Group(); holder.add(m.reliefGroup); m.reliefGroup.add(m.relief, m.skirt);
+  if (!m.slab) { m.slab = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), matSide); m.slab.castShadow = m.slab.receiveShadow = true; holder.add(m.slab); }
+  if (mat.normalMap) { mat.normalMap.dispose(); mat.normalMap = null; }
+  const NR = +$('nrmRes').value;
+  if (NR) { const cap = Math.min(NR, MAXTEX, Math.max(w, h)), kk = cap / Math.max(w, h);
+    const tw = Math.max(2, Math.round(w * kk)), th = Math.max(2, Math.round(h * kk));
+    mat.normalMap = buildNormalMap(F, w, h, tw, th); m.nrmTex = [tw, th]; } else m.nrmTex = null;
+  mat.needsUpdate = true;
+  if (m.cavTex) m.cavTex.dispose(); m.cavTex = buildCavityTex(F, w, h); mat.userData.u.uCav.value = m.cavTex;
+  if (m.hmMat) { m.hmMat.map.dispose(); m.hmMat.dispose(); }
+  m.hmMat = new THREE.MeshBasicMaterial({ map: buildHeightTex(F, w, h), toneMapped: false });
+  applyHM(m);
+}
+function applyHM(m) { if (m.relief) m.relief.material = $('showHM').checked ? m.hmMat : m.mat; dirty = true; }
+async function rebuild() {
+  const F = currentField(); if (!F) return;
+  busy('Building mesh…'); await tick(); await tick();
+  try {
+    root.rotation.z = 0;
+    buildModel(S, T, gA, matTop);
+    if (SB.field) { busy('Building comparison model…'); await tick(); buildModel(SB, TB, gB, matTopB); }
+    applyBoard(true);
+    $('empty').hidden = true; $('btnStl').disabled = false;
+  } catch (e) { console.error(e); setStatus('loadStatus', 'Could not build the mesh: ' + e.message + ' – try a lower mesh or surface detail.', 'err'); }
+  busy('');
+}
+// width / depth / base / border only rescale (instant)
+function applyBoard(refit) {
+  if (!T.relief) return;
+  const W = Math.max(10, +$('wmm').value || 300), A = S.fh / S.fw, Hm = W * A, D = Math.max(0.05, +$('dmm').value || 8), B = Math.max(0, +$('bmm').value || 0), br = Math.max(0, +$('border').value || 0);
+  $('hmm').value = Hm.toFixed(1);
+  const Bv = Math.max(B, 0.01), slabOn = (B > 0 || br > 0) && !$('hideFloor').checked;
+  const place = (m, holder) => { const hm = W * m.fh / m.fw, wt = W + 2 * br, ht = hm + 2 * br;
+    m.reliefGroup.scale.set(W, W, D); m.reliefGroup.position.z = 0;
+    m.slab.visible = slabOn; m.slab.scale.set(wt, ht, Bv); m.slab.position.set(0, 0, -Bv / 2 - wt * 4e-4);   // base top just under z = 0
+    return [wt, ht]; };
+  const [wA, hA] = place(T, gA); let Wt = wA, Ht = hA;
+  const hasB = !!(SB.field && TB.relief); if (!hasB) S.showB = false;
+  if (hasB) { const [wB, hB] = place(TB, gB); Wt = Math.max(wA, wB); Ht = Math.max(hA, hB); }
+  gA.position.x = gB.position.x = 0;            // same spot: flip between them
+  gA.visible = !S.showB; gB.visible = hasB && !!S.showB; abUI(hasB);
+  const first = !T.dims, prevSize = T.dims ? Math.max(T.dims[0], T.dims[1]) : 0, changed = first || Math.abs(T.dims[0] - Wt) > 1e-6 || Math.abs(T.dims[1] - Ht) > 1e-6;
+  Object.assign(T, { Wmm: W, Hmm: Hm, Dmm: D, Bmm: B, br, Wt, Ht, dims: [Wt, Ht] });
+  updateVertexNormals(T); if (hasB) updateVertexNormals(TB); setUV(); applyLight();
+  if (first) fit('angled');
+  else if (refit && changed) {   // keep the viewing angle and pan, just scale the distance to the new board size
+    const k = Math.max(Wt, Ht) / prevSize; cam.position.sub(ctl.target).multiplyScalar(k).add(ctl.target.multiplyScalar(k));
+    cam.near *= k; cam.far *= k; cam.updateProjectionMatrix(); ctl.update();
+  }
+  const nt = T.nrmTex ? ` · surface ${T.nrmTex[0]}×${T.nrmTex[1]}` : '';
+  $('readout').textContent = hasB ? `Showing ${S.showB ? 'B · ' + SB.name : 'A · ' + S.name} · ${W.toFixed(0)} mm wide × ${(B + D).toFixed(1)} mm`
+    : `${S.fw}×${S.fh} ${S.bits}-bit · mesh ${T.gx}×${T.gy}${nt} · board ${wA.toFixed(0)} × ${hA.toFixed(0)} × ${(B + D).toFixed(1)} mm`;
+  updateStlEst(); dirty = true;
+}
+function setUV() {   // grain repeats every 300 mm whatever the board size
+  if (matTop.map && T.Wmm) { matTop.map.repeat.set(T.Wmm / 300, T.Hmm / 300); if (matTopB.map) matTopB.map.repeat.set(T.Wmm / 300, T.Wmm * (SB.fh || 1) / (SB.fw || 1) / 300); }
+}
+function fit(mode) {
+  if (!T.dims) return; const [W, H] = T.dims;
+  const dd = Math.max(W / cam.aspect, H) / (2 * Math.tan(cam.fov * Math.PI / 360)) * 1.15;
+  root.rotation.z = 0;
+  if (mode === 'front') cam.position.set(0, 0, dd);
+  else cam.position.set(0, -dd * 0.55, dd * 0.85);
+  ctl.target.set(0, 0, 0); cam.near = dd / 200; cam.far = dd * 30; cam.updateProjectionMatrix(); ctl.update(); dirty = true;
+}
+
+// ---------- loading ----------
+function setStatus(id, msg, cls) { const e = $(id); e.textContent = msg || ''; e.className = 'status' + (cls ? ' ' + cls : ''); }
+function busy(msg) { $('busy').hidden = !msg; $('busy').textContent = msg; }
+async function loadFile(file) {
+  if (!file) return;
+  setStatus('loadStatus', 'Reading ' + file.name + '…'); busy('Reading depth map…'); await tick();
+  try {
+    const u8 = new Uint8Array(await file.arrayBuffer());
+    let png = null; try { png = await Core.decodePNG(u8); } catch { png = null; }
+    let F, w, h, bits = 8;
+    if (png) { F = png.data; w = png.w; h = png.h; bits = png.bits; }
+    else {
+      const bmp = await createImageBitmap(new Blob([u8], { type: file.type || 'image/png' }));
+      w = bmp.width; h = bmp.height; const c = new OffscreenCanvas(w, h), x = c.getContext('2d', { willReadFrequently: true });
+      x.drawImage(bmp, 0, 0); const d = x.getImageData(0, 0, w, h).data; F = new Float32Array(w * h);
+      for (let i = 0; i < F.length; i++) F[i] = (0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2]) / 255;
+    }
+    // stretch to full 0..1 so the depth setting means the real relief height
+    let lo = Infinity, hi = -Infinity; for (let i = 0; i < F.length; i++) { const v = F[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+    const r = hi - lo; if (r > 1e-6 && (lo > 0 || hi < 1)) { for (let i = 0; i < F.length; i++) F[i] = (F[i] - lo) / r; }
+    Object.assign(S, { field: F, fw: w, fh: h, bits, inv: null, name: file.name.replace(/\.[^.]+$/, '') || 'relief' });
+    $('srcPill').textContent = `${w}×${h} · ${bits}-bit`; $('srcPill').style.color = 'var(--ok)';
+    setStatus('loadStatus', `Loaded ${file.name}` + (r > 1e-6 && (lo > 0.002 || hi < 0.998) ? ` · levels stretched from ${lo.toFixed(3)}–${hi.toFixed(3)} to full range` : '') + '.', 'ok');
+    await rebuild();
+  } catch (e) { console.error(e); busy(''); setStatus('loadStatus', 'Could not read that file: ' + e.message, 'err'); }
+}
+function sampleField() {   // a carved medallion so the viewer can be tried without a file
+  const w = 1600, h = 1200, F = new Float32Array(w * h), cx = w / 2, cy = h / 2;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const dx = (x - cx) / 520, dy = (y - cy) / 520, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+    let v = 0;
+    if (r < 1) {
+      const dome = Math.sqrt(Math.max(0, 1 - r * r)) * 0.35;
+      const petals = Math.max(0, Math.cos(a * 8) * 0.5 + 0.5) ** 2 * Math.max(0, Math.sin(Math.PI * Math.min(1, r / 0.85))) * 0.4;
+      const rim = Math.exp(-(((r - 0.93) / 0.035) ** 2)) * 0.55;
+      const bead = r > 0.86 && r < 1 ? Math.max(0, Math.cos(a * 72) * 0.5 + 0.5) ** 6 * Math.exp(-(((r - 0.93) / 0.02) ** 2)) * 0.2 : 0;
+      const core = Math.exp(-((r / 0.16) ** 2)) * 0.35 + Math.max(0, Math.cos(r * 90)) ** 8 * 0.05 * (r < 0.3);
+      v = Math.max(dome + petals, rim + bead) + core;
+    }
+    const ex = Math.min(x, w - 1 - x), ey = Math.min(y, h - 1 - y), frame = Math.min(ex, ey) < 60 ? 0.25 * Math.min(1, Math.min(ex, ey) / 25) * (Math.min(ex, ey) > 45 ? Math.max(0, (60 - Math.min(ex, ey)) / 15) : 1) : 0;
+    F[y * w + x] = Math.min(1, v + frame + (Math.sin(x * 0.9) * Math.sin(y * 0.9)) * 0.003 + 0.004);
+  }
+  let hi = 0; for (const v of F) hi = Math.max(hi, v); for (let i = 0; i < F.length; i++) F[i] /= hi;
+  Object.assign(S, { field: F, fw: w, fh: h, bits: 16, inv: null, name: 'sample_medallion' });
+  $('srcPill').textContent = `${w}×${h} · sample`; $('srcPill').style.color = 'var(--ok)';
+  setStatus('loadStatus', 'Sample medallion loaded.', 'ok'); rebuild();
+}
+
+// ---------- compare (model B) ----------
+function abUI(hasB) { $('abBadge').hidden = !hasB; $('btnAB').hidden = !hasB;
+  if (hasB) { $('abBadge').textContent = S.showB ? 'B' : 'A'; $('abBadge').classList.toggle('b', !!S.showB); $('btnAB').textContent = S.showB ? 'Show A (Space)' : 'Show B (Space)'; } }
+function flipAB() { if (!(SB.field && TB.relief)) return; S.showB = !S.showB; applyBoard(false); dirty = true; }
+async function readDepthFile(file) {
+  const u8 = new Uint8Array(await file.arrayBuffer());
+  let png = null; try { png = await Core.decodePNG(u8); } catch { png = null; }
+  let F, w, h, bits = 8;
+  if (png) { F = png.data; w = png.w; h = png.h; bits = png.bits; }
+  else { const bmp = await createImageBitmap(new Blob([u8], { type: file.type || 'image/png' }));
+    w = bmp.width; h = bmp.height; const c = new OffscreenCanvas(w, h), x = c.getContext('2d', { willReadFrequently: true });
+    x.drawImage(bmp, 0, 0); const d = x.getImageData(0, 0, w, h).data; F = new Float32Array(w * h);
+    for (let i = 0; i < F.length; i++) F[i] = (0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2]) / 255; }
+  let lo = Infinity, hi = -Infinity; for (let i = 0; i < F.length; i++) { const v = F[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+  const r = hi - lo; if (r > 1e-6 && (lo > 0 || hi < 1)) for (let i = 0; i < F.length; i++) F[i] = (F[i] - lo) / r;
+  return { field: F, fw: w, fh: h, bits, inv: null, name: file.name.replace(/\.[^.]+$/, '') || 'B' };
+}
+async function loadB(file) {
+  if (!file) return; if (!S.field) { setStatus('loadStatus', 'Load the main depth map first, then B.', 'err'); return; }
+  busy('Reading comparison map…'); await tick();
+  try { Object.assign(SB, await readDepthFile(file));
+    $('bPill').textContent = `B: ${SB.name} · ${SB.fw}×${SB.fh}`; $('bPill').hidden = false; $('btnClrB').hidden = false;
+    S.showB = true; await rebuild(); }
+  catch (e) { console.error(e); busy(''); setStatus('loadStatus', 'Could not read B: ' + e.message, 'err'); }
+}
+function clearB() { SB.field = null; S.showB = false; dispose(TB.relief); dispose(TB.skirt); TB.relief = TB.skirt = null; gB.visible = false;
+  $('bPill').hidden = true; $('btnClrB').hidden = true; applyBoard(false); }
+
+// ---------- STL ----------
+function stlPlan() {
+  if (!S.field) return null;
+  const W = Math.max(10, +$('wmm').value || 300), Hm = W * S.fh / S.fw, D = Math.max(0.1, +$('dmm').value || 8), B = Math.max(0.4, +$('bmm').value || 0), br = Math.max(0, +$('border').value || 0);
+  const pad = Math.round(br / W * S.fw), w = S.fw + 2 * pad, h = S.fh + 2 * pad;
+  const Wt = W * w / S.fw, Ht = Hm * h / S.fh, sp = +$('sRes').value;
+  let GX = sp > 0 ? Math.round(Wt / sp) + 1 : w; GX = Math.max(2, Math.min(w, GX));
+  const GY = Math.max(2, Math.min(h, Math.round((GX - 1) * Ht / Wt) + 1));
+  const box = $('sBox').checked && !$('sTile').checked ? { clear: +$('bClear').value || 10, wall: +$('bWall').value || 3, cover: +$('bCover').value || 6, floor: +$('bFloor').value || 2 } : null;
+  let tx = 1, ty = 1;
+  if ($('sTile').checked) {
+    const bw = Math.max(20, +$('bedW').value || 256), bh = Math.max(20, +$('bedH').value || 256);
+    const fitT = (a, b) => [Math.ceil(Wt / a), Math.ceil(Ht / b)], P1 = fitT(bw, bh), P2 = fitT(bh, bw);
+    [tx, ty] = P1[0] * P1[1] <= P2[0] * P2[1] ? P1 : P2;
+  }
+  const cuts = (n, G) => Array.from({ length: n + 1 }, (_, i) => Math.round(i * (G - 1) / n)), cx = cuts(tx, GX), cy = cuts(ty, GY), tiles = [];
+  for (let j = 0; j < ty; j++) for (let i = 0; i < tx; i++) {
+    const r = { c0: cx[i], c1: cx[i + 1], r0: cy[j], r1: cy[j + 1] };
+    tiles.push({ name: tx * ty > 1 ? `${S.name}_tile_r${j + 1}c${i + 1}.stl` : `${S.name}_${Wt.toFixed(0)}mm${box ? '_pourbox' : ''}.stl`, range: r, tris: Core.stlTriangles(r.c1 - r.c0 + 1, r.r1 - r.r0 + 1, !!box) });
+  }
+  const tris = tiles.reduce((a, t) => a + t.tris, 0);
+  return { W, Hm, D, B, pad, w, h, Wt, Ht, GX, GY, box, tx, ty, tiles, tris, bytes: tiles.reduce((a, t) => a + 84 + 50 * t.tris, 0), step: Wt / (GX - 1) };
+}
+function updateStlEst() {
+  $('boxOpts').hidden = !$('sBox').checked; $('tileOpts').hidden = !$('sTile').checked;
+  const p = stlPlan(); if (!p) { $('stlEst').textContent = ''; return; }
+  $('stlEst').innerHTML = `${p.Wt.toFixed(0)} × ${p.Ht.toFixed(0)} × ${(p.B + p.D).toFixed(1)} mm · ${p.step.toFixed(2)} mm grid · ${(p.tris / 1e6).toFixed(2)} M triangles · ≈${(p.bytes / 1e6).toFixed(0)} MB` +
+    (p.tiles.length > 1 ? ` · <b>${p.tx} × ${p.ty} tiles</b> (ZIP)` : '') + ($('sBox').checked && $('sTile').checked ? ' · pour box is skipped when tiling' : '') +
+    (p.bytes > 400e6 ? ' · <span style="color:var(--err)">very large: pick a coarser spacing</span>' : '');
+}
+function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000); }
+async function exportSTL() {
+  const p = stlPlan(); if (!p) return; $('btnStl').disabled = true;
+  try {
+    setStatus('stlStatus', `Building ${p.tiles.length > 1 ? p.tiles.length + ' tiles' : 'mesh'} (${(p.tris / 1e6).toFixed(1)} M triangles)…`); await tick(); await tick();
+    let F = currentField();
+    if (p.pad) { const P = new Float32Array(p.w * p.h); for (let y = 0; y < S.fh; y++) P.set(F.subarray(y * S.fw, (y + 1) * S.fw), (y + p.pad) * p.w + p.pad); F = P; }
+    const opt = { GX: p.GX, GY: p.GY, Wmm: p.Wt, Hmm: p.Ht, depthMM: p.D, baseMM: p.B, box: p.box };
+    const files = [];
+    for (const t of p.tiles) { files.push({ name: t.name, buf: Core.buildSTL(F, p.w, p.h, { ...opt, ...t.range }) }); await tick(); }
+    if (files.length === 1) download(new Blob([files[0].buf], { type: 'model/stl' }), files[0].name);
+    else download(Core.zipBuild(files.map(f => { const u = new Uint8Array(f.buf); return { name: f.name, data: u, crc: Core.crc32(u), size: u.length, method: 0 }; })), `${S.name}_${p.tx}x${p.ty}_tiles.zip`);
+    setStatus('stlStatus', `Saved ${files.length > 1 ? files.length + ' tiles as ZIP' : files[0].name} · ${(p.bytes / 1e6).toFixed(0)} MB.`, 'ok');
+  } catch (e) { console.error(e); setStatus('stlStatus', 'STL failed: ' + (e.message || e) + ' – try a coarser grid spacing.', 'err'); }
+  $('btnStl').disabled = false;
+}
+
+// ---------- screenshot ----------
+function screenshot() {
+  const pr = ren.getPixelRatio(); ren.setPixelRatio(Math.min(4, pr * 2)); ren.setSize(el.clientWidth, el.clientHeight, false);
+  ren.render(scene, cam);
+  ren.domElement.toBlob(b => { download(b, `${S.name}_view.png`); ren.setPixelRatio(pr); resize(); }, 'image/png');
+}
+
+// ---------- wiring ----------
+$('drop').onclick = $('btnOpen2').onclick = () => $('file').click();
+$('file').onchange = e => { loadFile(e.target.files[0]); e.target.value = ''; };
+$('btnSample').onclick = $('btnSample2').onclick = sampleField;
+const stage = $('stage');
+for (const t of [document.body]) {
+  t.addEventListener('dragover', e => { e.preventDefault(); stage.classList.add('dragover'); $('drop').classList.add('hover'); });
+  t.addEventListener('dragleave', e => { if (!e.relatedTarget) { stage.classList.remove('dragover'); $('drop').classList.remove('hover'); } });
+  t.addEventListener('drop', e => { e.preventDefault(); stage.classList.remove('dragover'); $('drop').classList.remove('hover'); loadFile(e.dataTransfer.files[0]); });
+}
+$('invert').onchange = () => { SB.inv = null; rebuild(); };
+$('btnB').onclick = () => $('fileB').click(); $('fileB').onchange = e => { loadB(e.target.files[0]); e.target.value = ''; };
+$('btnClrB').onclick = clearB; $('btnAB').onclick = flipAB;
+$('showHM').onchange = () => { applyHM(T); applyHM(TB); };
+document.addEventListener('keydown', e => { if ((e.key === ' ' || e.key.toLowerCase() === 'b') && !/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName) && SB.field) { e.preventDefault(); flipAB(); } });
+document.addEventListener('keydown', e => { if (e.key.toLowerCase() === 'h' && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) { $('showHM').checked = !$('showHM').checked; $('showHM').onchange(); } });
+$('hideFloor').onchange = () => { const on = $('hideFloor').checked; $('floorRow').hidden = $('floorHelp').hidden = !on; rebuild(); };
+$('floorCut').addEventListener('input', refreshVals); $('floorCut').addEventListener('change', () => rebuild());
+$('meshRes').onchange = $('nrmRes').onchange = () => rebuild();
+for (const id of ['wmm', 'bmm', 'border']) $(id).addEventListener('input', () => applyBoard(false));
+for (const id of ['wmm', 'border']) $(id).addEventListener('change', () => applyBoard(true));
+$('dmm').addEventListener('input', () => { $('dmmR').value = $('dmm').value; refreshVals(); applyBoard(false); });
+$('dmmR').addEventListener('input', () => { $('dmm').value = (+$('dmmR').value).toFixed(1); refreshVals(); applyBoard(false); });
+$('matPreset').onchange = () => setMatPreset($('matPreset').value);
+$('litPreset').onchange = () => setLitPreset($('litPreset').value);
+let qT = 0; const quantRebuild = () => { if (!$('mQuant').checked || !(+$('mLayer').value > 0)) return; clearTimeout(qT); qT = setTimeout(() => rebuild(), 450); };
+$('mQuant').onchange = () => { if (+$('mLayer').value > 0) rebuild(); };
+$('mLayer').addEventListener('change', () => { if ($('mQuant').checked) rebuild(); });
+$('dmm').addEventListener('input', quantRebuild); $('dmmR').addEventListener('change', quantRebuild);
+for (const id of ['mColor', 'mGrain', 'mRough', 'mMetal', 'mCoat', 'mCoatGloss', 'mSheen', 'mSheenRough', 'mEnv', 'mPatina', 'mPatCol', 'mTrans', 'mLayer'])
+  $(id).addEventListener('input', () => { if (id === 'mColor') grainColour = shade($('mColor').value, 0.55); $('matPreset').value = 'Custom'; refreshVals(); applyMaterial(); });
+for (const id of ['lAz', 'lEl', 'lKey', 'lWarm', 'lFill', 'lExp'])
+  $(id).addEventListener('input', () => { $('litPreset').value = 'Custom'; refreshVals(); applyLight(); });
+$('lShadow').onchange = $('bgCol').oninput = applyLight;
+for (const id of ['sRes', 'sBox', 'sTile', 'bClear', 'bWall', 'bCover', 'bFloor', 'bedW', 'bedH']) $(id).addEventListener('input', updateStlEst);
+$('btnStl').onclick = exportSTL;
+$('vReset').onclick = () => fit('angled'); $('vFront').onclick = () => fit('front');
+$('vRake').onclick = () => { $('litPreset').value = 'Raking light'; setLitPreset('Raking light'); };
+$('sway').onchange = () => { if (!$('sway').checked) { root.rotation.z = 0; dirty = true; } };
+$('vShot').onclick = screenshot;
+
+setMatPreset('Light oak'); setLitPreset('Studio'); $('dmmR').value = $('dmm').value; refreshVals(); updateStlEst();
+window.__viewer = { S, T, SB, TB, gA, gB, loadFile, loadB, sampleField, stlPlan, ren, cam, ctl };
+</script>
+</body>
+</html>
